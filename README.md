@@ -34,10 +34,11 @@ The system is composed of a Python FastAPI backend that handles the core algorit
 - **Framework**: [Vue 3](https://vuejs.org/) (Composition API with `<script setup>`)
 - **Language**: TypeScript
 - **UI Toolkit**: [Element Plus](https://element-plus.org/)
-- **Mapping**: [Leaflet](https://leafletjs.com/)
+- **Mapping**: [Leaflet](https://leafletjs.com/) + [Leaflet Ant Path](https://github.com/rubenspgcavalcante/leaflet-ant-path)
 - **Charting**: [ECharts](https://echarts.apache.org/)
 - **State Management**: [Pinia](https://pinia.vuejs.org/)
 - **Build Tool**: [Vite](https://vitejs.dev/)
+- **Design**: Glassmorphism with gradient backgrounds
 
 ## ⚙️ Setup and Installation
 
@@ -52,24 +53,14 @@ The system is composed of a Python FastAPI backend that handles the core algorit
 # Navigate to the backend directory
 cd backend
 
-# Create a virtual environment
-uv venv
-
-# Activate the virtual environment
-# On macOS/Linux:
-source .venv/bin/activate
-# On Windows:
-.venv\Scripts\activate
-
-# Install dependencies
-uv pip install -r requirements.txt
+# Install dependencies (creates virtual environment automatically)
+uv sync
 
 # Apply database migrations
-alembic upgrade head
+uv run alembic upgrade head
 
 # [Optional] Seed the database with test data
-# Start the server first, then run this in a separate terminal
-curl -X POST http://localhost:8000/api/v1/utils/seed-data
+uv run python seed_shanghai_data.py
 ```
 
 ### 2. Frontend Setup
@@ -87,7 +78,7 @@ npm install
 1.  **Start the Backend Server**:
     ```bash
     cd backend
-    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ```
     The API will be available at `http://localhost:8000`.
 
@@ -99,9 +90,18 @@ npm install
     The application will be accessible at `http://localhost:5173`.
 
 3.  **Usage**:
-    - The application will automatically connect to the backend and seed test data.
-    - Navigate to the **AI Dispatch Center**.
-    - Click **"Start Intelligent Dispatch"** to see the algorithm in action. The map will update with the optimized routes.
+    - Navigate to **AI调度中心** (AI Dispatch Center)
+    - Click **"🚀 开始AI调度"** to start the intelligent dispatch
+    - Watch the algorithm progress through K-Means clustering and genetic algorithm optimization
+    - View the optimized routes visualized on the map with animated paths
+
+## 🎨 Design Features
+
+- **Glassmorphism UI**: Semi-transparent cards with backdrop blur effects
+- **Gradient Backgrounds**: Modern blue-purple gradient theme
+- **8 Core Pages**: Dashboard, AI Dispatch Center, Package Flow, Courier Workbench, Real-time Monitor, Analytics, Route History, Settings
+- **Animated Route Visualization**: Ant-path animations showing delivery direction
+- **Real-time Data**: Live updates from backend APIs
 
 ---
-*This project was developed with assistance from a Gemini agent.*
+*This project was developed with assistance from Claude Sonnet 4.5.*
