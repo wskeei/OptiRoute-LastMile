@@ -53,14 +53,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import axios from 'axios'
 import { Search, View, Download, RefreshRight } from '@element-plus/icons-vue'
 
 const dateRange = ref('')
-const history = [
-  { time: '2026-01-13 09:30', title: '上午高峰批次', status: '已完成', statusType: 'success', packages: 127, couriers: 5, algorithm: 'K-Means + GA', savedDist: 32.1, savedCost: 156 },
-  { time: '2026-01-12 14:15', title: '临时紧急调度', status: '已归档', statusType: 'info', packages: 89, couriers: 4, algorithm: 'K-Means + GA', savedDist: 18.7, savedCost: 89 },
-]
+const history = ref<any[]>([])
+
+const fetchHistory = async () => {
+  try {
+    const res = await axios.get('/api/v1/dispatch/plans')
+    history.value = res.data.map((plan: any) => ({
+      time: new Date(plan.created_at).toLocaleString('zh-CN'),
+      title: plan.title,
+      status: plan.status === 'READY' ? '已完成' : plan.status === 'OPTIMIZING' ? '计算中' : '草稿',
+      statusType: plan.status === 'READY' ? 'success' : 'info',
+      packages: plan.routes?.length || 0,
+      couriers: plan.routes?.length || 0,
+      algorithm: 'K-Means + GA',
+      savedDist: 0,
+      savedCost: 0
+    }))
+  } catch (error) {
+    console.error('Failed to fetch history:', error)
+  }
+}
+
+onMounted(() => fetchHistory())
 </script>
 
 <style scoped>

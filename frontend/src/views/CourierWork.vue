@@ -5,7 +5,7 @@
       <div class="list-section glass-card">
         <div class="section-header">
           <h3>👥 运力实时状态</h3>
-          <el-button type="primary" size="small" round :icon="Plus">添加成员</el-button>
+          <el-button type="primary" size="small" round :icon="Plus" @click="handleAdd">添加成员</el-button>
         </div>
         
         <div class="courier-grid">
@@ -54,24 +54,73 @@
         </div>
       </div>
     </div>
+
+    <!-- Add Courier Dialog -->
+    <el-dialog v-model="addDialogVisible" title="添加快递员" width="400px">
+      <el-form :model="newCourier" label-width="80px">
+        <el-form-item label="姓名">
+          <el-input v-model="newCourier.name" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="newCourier.phone" placeholder="请输入手机号" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="addDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitAdd">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import axios from 'axios'
 import * as echarts from 'echarts'
 
 const radarRef = ref<HTMLElement | null>(null)
+const courierList = ref<any[]>([])
+const addDialogVisible = ref(false)
+const newCourier = ref({ name: '', phone: '', station_id: 1 })
 
-const courierList = [
-  { name: '李师傅', area: '浦东A区', status: 'online', completed: 15, total: 20, progress: 75 },
-  { name: '王师傅', area: '黄浦B区', status: 'busy', completed: 12, total: 18, progress: 66 },
-  { name: '陈师傅', area: '静安C区', status: 'online', completed: 8, total: 15, progress: 53 },
-  { name: '赵师傅', area: '徐汇D区', status: 'offline', completed: 0, total: 0, progress: 0 },
-]
+const fetchCouriers = async () => {
+  try {
+    const res = await axios.get('/api/v1/delivery/couriers')
+    courierList.value = res.data.map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      area: '配送区域',
+      status: c.status?.toLowerCase() || 'available',
+      completed: 0,
+      total: 0,
+      progress: 0
+    }))
+  } catch (error) {
+    console.error('Failed to fetch couriers:', error)
+  }
+}
+
+const handleAdd = () => {
+  addDialogVisible.value = true
+}
+
+const submitAdd = async () => {
+  try {
+    await axios.post('/api/v1/delivery/couriers', newCourier.value)
+    ElMessage.success('添加成功')
+    addDialogVisible.value = false
+    newCourier.value = { name: '', phone: '', station_id: 1 }
+    fetchCouriers()
+  } catch (error) {
+    ElMessage.error('添加失败')
+  }
+}
 
 onMounted(() => {
+  fetchCouriers()
+
   if (radarRef.value) {
     const chart = echarts.init(radarRef.value)
     chart.setOption({

@@ -82,6 +82,7 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive } from 'vue'
 import L from 'leaflet'
+import 'leaflet-ant-path'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 import { Cpu } from '@element-plus/icons-vue'
@@ -101,9 +102,10 @@ const config = reactive({
 
 // -- Map Logic --
 let map: L.Map | null = null
-const depotPos: [number, number] = [31.2304, 121.4737] 
-const markers: L.CircleMarker[] = []
-const routes: L.Polyline[] = []
+const depotPos: [number, number] = [31.2304, 121.4737]
+const markers: L.Marker[] = []
+const routes: any[] = []
+const clusterPolygons: L.Polygon[] = []
 
 const initData = async () => {
   try {
@@ -139,12 +141,14 @@ const startOptimization = async () => {
   if (isOptimizing.value || !stationId.value) return
   isOptimizing.value = true
   optimizationComplete.value = false
-  activeStep.value = 1 
-  
-  routes.forEach(r => r.remove())
+  activeStep.value = 1
+
+  routes.forEach(r => r.remove ? r.remove() : map?.removeLayer(r))
   routes.length = 0
   markers.forEach(m => m.remove())
   markers.length = 0
+  clusterPolygons.forEach(p => p.remove())
+  clusterPolygons.length = 0
 
   try {
     const res = await axios.post('/api/v1/dispatch/plans', {
@@ -152,9 +156,9 @@ const startOptimization = async () => {
       station_id: stationId.value,
       algorithm_meta: config
     })
-    
+
     currentPlanId.value = res.data.id
-    activeStep.value = 2 
+    activeStep.value = 2
     pollStatus()
   } catch (error) {
     ElMessage.error('调度请求失败')
@@ -177,42 +181,78 @@ const pollStatus = async () => {
 }
 
 const handleOptimizationSuccess = (plan: any) => {
-  activeStep.value = 3 
-  
-  const colors = ['#667eea', '#764ba2', '#00f260', '#f56565', '#ed8936']
-  
+  activeStep.value = 3
+
   if (plan.routes && plan.routes.length > 0) {
     plan.routes.forEach((route: any, idx: number) => {
       if (route.geo_json && route.geo_json.coordinates) {
         const latlngs = route.geo_json.coordinates.map((c: any) => [c[1], c[0]])
-        
-        const polyline = L.polyline(latlngs, {
-          color: colors[idx % colors.length],
+        const routeColor = route.geo_json.color || '#667eea'
+
+        // 使用 ant-path 创建动画路径
+        const antPath = (L as any).polyline.antPath(latlngs, {
+          color: routeColor,
           weight: 4,
-          opacity: 0.8,
+          opacity: 0.7,
+          pulseColor: '#FFFFFF',
+          delay: 800,
+          dashArray: [10, 20],
           lineCap: 'round'
         }).addTo(map!)
-        routes.push(polyline)
-        
+        routes.push(antPath)
+
+        // 添加带序号的包裹点标记（跳过起点和终点）
         for (let i = 1; i < latlngs.length - 1; i++) {
-           const marker = L.circleMarker(latlngs[i], {
-            radius: 4,
-            fillColor: 'white',
-            color: colors[idx % colors.length],
-            weight: 2,
-            fillOpacity: 1
-          }).addTo(map!)
+          const numberIcon = L.divIcon({
+            className: 'package-number-marker',
+            html: `<div style="background-color:${routeColor};color:white;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${i}</div>`,
+            iconSize: [24, 24]
+          })
+          const marker = L.marker(latlngs[i], { icon: numberIcon }).addTo(map!)
+
+          // 添加 tooltip 显示包裹信息
+          marker.bindTooltip(`包裹 #${i}<br>路线: ${idx + 1}`, {
+            direction: 'top',
+            offset: [0, -12]
+          })
           markers.push(marker)
+        }
+
+        // 绘制聚类区域边界（使用凸包近似）
+        if (route.geo_json.cluster_center && latlngs.length > 3) {
+          const clusterCenter = [route.geo_json.cluster_center[0], route.geo_json.cluster_center[1]]
+          const packagePoints = latlngs.slice(1, -1) // 排除起点和终点
+
+          // 简单的凸包近似：按角度排序点
+          const sortedPoints = packagePoints.sort((a: any, b: any) => {
+            const angleA = Math.atan2(a[0] - clusterCenter[0], a[1] - clusterCenter[1])
+            const angleB = Math.atan2(b[0] - clusterCenter[0], b[1] - clusterCenter[1])
+            return angleA - angleB
+          })
+
+          const polygon = L.polygon(sortedPoints, {
+            color: routeColor,
+            weight: 2,
+            opacity: 0.4,
+            fillColor: routeColor,
+            fillOpacity: 0.1,
+            dashArray: '5, 5'
+          }).addTo(map!)
+
+          polygon.bindTooltip(`聚类 ${idx + 1}<br>包裹数: ${route.geo_json.package_count}<br>距离: ${route.geo_json.total_distance_km}km`, {
+            sticky: true
+          })
+          clusterPolygons.push(polygon)
         }
       }
     })
   }
-  
+
   // 模拟稍微延迟一下结束动画
   setTimeout(() => {
-     isOptimizing.value = false
-     optimizationComplete.value = true
-     ElMessage.success('智能调度完成')
+    isOptimizing.value = false
+    optimizationComplete.value = true
+    ElMessage.success('智能调度完成')
   }, 800)
 }
 

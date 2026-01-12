@@ -4,13 +4,13 @@
     <div class="hero-card glass-card">
       <div class="hero-content">
         <h1>Hello, Admin 👋</h1>
-        <p>今日配送效率提升 12%，系统运行平稳。</p>
+        <p>今日配送效率提升 {{ stats.efficiency_improvement }}%，系统运行平稳。</p>
         <div class="hero-stats">
           <div class="stat-pill">
-            <span class="dot green"></span> 在线运力 5/5
+            <span class="dot green"></span> 在线运力 {{ stats.online_couriers }}/{{ stats.online_couriers }}
           </div>
           <div class="stat-pill">
-            <span class="dot orange"></span> 正在计算 1
+            <span class="dot orange"></span> 待配送 {{ stats.pending_count }}
           </div>
         </div>
       </div>
@@ -26,23 +26,23 @@
       <div class="icon-box blue"><el-icon><Box /></el-icon></div>
       <div class="stat-info">
         <div class="label">待配送</div>
-        <div class="value">127</div>
+        <div class="value">{{ stats.pending_count }}</div>
       </div>
     </div>
-    
+
     <div class="stat-card glass-card">
       <div class="icon-box purple"><el-icon><Van /></el-icon></div>
       <div class="stat-info">
         <div class="label">配送中</div>
-        <div class="value">85</div>
+        <div class="value">{{ stats.in_transit_count }}</div>
       </div>
     </div>
-    
+
     <div class="stat-card glass-card">
       <div class="icon-box green"><el-icon><CircleCheck /></el-icon></div>
       <div class="stat-info">
         <div class="label">已完成</div>
-        <div class="value">342</div>
+        <div class="value">{{ stats.completed_count }}</div>
       </div>
     </div>
 
@@ -80,19 +80,35 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import * as echarts from 'echarts'
+import axios from 'axios'
 import { Box, Van, CircleCheck, StarFilled } from '@element-plus/icons-vue'
 
 const period = ref('week')
 const chartRef = ref<HTMLElement | null>(null)
 
-const courierRanking = [
-  { name: '李师傅', rating: 5.0, avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png' },
-  { name: '王师傅', rating: 4.8, avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png' },
-  { name: '陈师傅', rating: 4.5, avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png' },
-  { name: '赵师傅', rating: 4.2, avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png' },
-]
+const stats = ref({ pending_count: 0, in_transit_count: 0, completed_count: 0, online_couriers: 0, efficiency_improvement: 0 })
+const courierRanking = ref<any[]>([])
+
+const fetchDashboardData = async () => {
+  try {
+    const [statsRes, rankingRes] = await Promise.all([
+      axios.get('/api/v1/stats/dashboard'),
+      axios.get('/api/v1/stats/courier-ranking')
+    ])
+    stats.value = statsRes.data
+    courierRanking.value = rankingRes.data.map((c: any) => ({
+      name: c.name,
+      rating: c.delivered_count,
+      avatar: 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
+    }))
+  } catch (error) {
+    console.error('Failed to fetch dashboard data:', error)
+  }
+}
 
 onMounted(() => {
+  fetchDashboardData()
+
   if (chartRef.value) {
     const chart = echarts.init(chartRef.value)
     chart.setOption({

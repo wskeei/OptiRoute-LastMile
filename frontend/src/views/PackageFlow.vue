@@ -26,13 +26,14 @@
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
           <el-select v-model="statusFilter" placeholder="包裹状态" class="status-select" clearable>
-            <el-option label="待分拣" value="pending" />
-            <el-option label="配送中" value="delivering" />
-            <el-option label="已送达" value="completed" />
+            <el-option label="待分拣" value="PENDING" />
+            <el-option label="已分配" value="ASSIGNED" />
+            <el-option label="配送中" value="IN_TRANSIT" />
+            <el-option label="已送达" value="DELIVERED" />
           </el-select>
         </div>
         <div class="header-right">
-          <el-button type="primary" round :icon="Plus">扫码入库</el-button>
+          <el-button type="primary" round :icon="Plus" @click="handleScan">扫码入库</el-button>
           <el-button round :icon="Download">导出</el-button>
         </div>
       </div>
@@ -73,32 +74,93 @@
         <el-pagination background layout="prev, pager, next" :total="127" />
       </div>
     </div>
+
+    <!-- Scan Dialog -->
+    <el-dialog v-model="scanDialogVisible" title="扫码入库" width="400px">
+      <el-input v-model="newTrackingNumber" placeholder="请输入快递单号" clearable />
+      <template #footer>
+        <el-button @click="scanDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitScan">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import axios from 'axios'
+import { ElMessage } from 'element-plus'
 import { Search, Plus, Download } from '@element-plus/icons-vue'
 
 const searchQuery = ref('')
 const statusFilter = ref('')
+const packages = ref<any[]>([])
+const scanDialogVisible = ref(false)
+const newTrackingNumber = ref('')
 
-const stats = [
-  { label: '待分拣', value: 45, icon: 'Box', type: 'info' },
-  { label: '配送中', value: 87, icon: 'Van', type: 'warning' },
-  { label: '已完成', value: 342, icon: 'CircleCheck', type: 'success' },
-  { label: '异常', value: 3, icon: 'Warning', type: 'danger' }
-]
+const stats = ref([
+  { label: '待分拣', value: 0, icon: 'Box', type: 'info' },
+  { label: '配送中', value: 0, icon: 'Van', type: 'warning' },
+  { label: '已完成', value: 0, icon: 'CircleCheck', type: 'success' },
+  { label: '异常', value: 0, icon: 'Warning', type: 'danger' }
+])
 
-const tableData = [
-  { trackingId: 'SF1000293841', recipient: '张三', address: '上海市浦东新区张江高科园区A栋101', status: 'delivering', courier: '李师傅' },
-  { trackingId: 'YT2938471923', recipient: '李四', address: '上海市黄浦区南京东路888号', status: 'pending', courier: '-' },
-  { trackingId: 'JD9283746152', recipient: '王五', address: '上海市静安区静安寺街道123号', status: 'completed', courier: '陈师傅' },
-  { trackingId: 'ZT1234567890', recipient: '赵六', address: '上海市徐汇区港汇恒隆广场', status: 'issue', courier: '王师傅' },
-]
+const fetchPackages = async () => {
+  try {
+    const params: any = {}
+    if (statusFilter.value) params.status = statusFilter.value.toUpperCase()
+    const res = await axios.get('/api/v1/delivery/packages', { params })
+    packages.value = res.data
+    updateStats()
+  } catch (error) {
+    console.error('Failed to fetch packages:', error)
+  }
+}
+
+const updateStats = () => {
+  const allRes = axios.get('/api/v1/stats/dashboard')
+  allRes.then(res => {
+    stats.value[0].value = res.data.pending_count
+    stats.value[1].value = res.data.in_transit_count
+    stats.value[2].value = res.data.completed_count
+  })
+}
+
+const tableData = computed(() => {
+  let filtered = packages.value
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(p =>
+      p.tracking_number?.toLowerCase().includes(q) ||
+      p.recipient_name?.toLowerCase().includes(q)
+    )
+  }
+  return filtered.map(p => ({
+    trackingId: p.tracking_number,
+    recipient: p.recipient_name,
+    address: p.recipient_address,
+    status: p.status?.toLowerCase() || 'pending',
+    courier: '-'
+  }))
+})
+
+const handleScan = () => {
+  scanDialogVisible.value = true
+}
+
+const submitScan = async () => {
+  if (!newTrackingNumber.value) return
+  ElMessage.success('扫码入库功能待实现')
+  scanDialogVisible.value = false
+  newTrackingNumber.value = ''
+}
+
+watch(statusFilter, () => fetchPackages())
+
+onMounted(() => fetchPackages())
 
 const getStatusLabel = (status: string) => {
-  const map: Record<string, string> = { pending: '待分拣', delivering: '配送中', completed: '已送达', issue: '异常' }
+  const map: Record<string, string> = { pending: '待分拣', in_transit: '配送中', delivered: '已送达', assigned: '已分配' }
   return map[status] || '未知'
 }
 </script>
