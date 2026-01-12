@@ -248,14 +248,29 @@ class ConstrainedKMeans:
                     break
             
             if not assigned:
-                # 如果所有都塞满了 (理论上如果总容量够不应该发生，但可能因碎片问题发生)
-                # 强制分配给当前负载最小的 或者 溢出最小的？
-                # 这里简单处理：分配给距离最近的，即使溢出 (软约束)
-                # 这样可以保证算法运行下去，但会违反约束。
-                # 实际生产中可能需要报错或增加车。
-                fallback_cluster = sorted_indices[point_idx, 0]
-                labels[point_idx] = fallback_cluster
-                current_loads[fallback_cluster] += point_weight
+                # Fallback Strategy:
+                # 1. Try to find ANY cluster that has space, even if distance is far.
+                #    Sort clusters by distance to minimize impact, but check ALL.
+                for rank in range(k):
+                    cluster_idx = sorted_indices[point_idx, rank]
+                    if current_loads[cluster_idx] + point_weight <= capacities[cluster_idx]:
+                        labels[point_idx] = cluster_idx
+                        current_loads[cluster_idx] += point_weight
+                        assigned = True
+                        break
+                
+                # 2. If STILL not assigned (Total Capacity < Total Weight, or fragmentation),
+                #    Assign to the cluster with the MOST remaining capacity (to minimize overflow).
+                if not assigned:
+                     # Calculate remaing capacity for all clusters
+                     remaining = [capacities[i] - current_loads[i] for i in range(k)]
+                     # Find index of max remaining (even if negative)
+                     best_fallback = np.argmax(remaining)
+                     
+                     labels[point_idx] = best_fallback
+                     current_loads[best_fallback] += point_weight
+                     # This technically violates the hard constraint, but it's the best we can do if P vs NP is hard.
+                     # With our new data generation ensuring Total Cap > Total Weight * 1.2, this branch should rarely be hit.
                 
         return labels
 

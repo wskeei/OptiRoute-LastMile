@@ -65,3 +65,59 @@ def batch_create_packages(packages: List[schemas.PackageCreate], db: Session = D
     for p in db_packages:
         db.refresh(p)
     return db_packages
+
+@router.post("/packages/reinit")
+def reinit_package_data(db: Session = Depends(get_db)):
+    """
+    重新初始化包裹数据：
+    1. 清空所有现有包裹
+    2. 重新生成 300 个上海真实地址的包裹
+    """
+    try:
+        # 1. Clear existing packages
+        # First clear route associations to avoid FK issues if any remain (though clear history handles this)
+        db.query(models.Package).delete()
+        db.commit()
+
+        # 2. Seed new data
+        import random
+        from app.utils.seed_shanghai_data import get_shanghai_locations
+        
+        shanghai_locs = get_shanghai_locations() # 100 base locations
+        
+        # Determine how many to generate (user said 300)
+        target_count = 300
+        
+        # Since we have only 100 base locations, we sample with replacement or jitter them
+        # Let's simple sample with replacement for now, or loop
+        
+        new_packages = []
+        for i in range(target_count):
+            # Pick a random base location
+            base_loc = random.choice(shanghai_locs)
+            
+            # Add slight jitter to coords to avoid perfect overlap
+            jitter_lat = random.uniform(-0.005, 0.005)
+            jitter_lon = random.uniform(-0.005, 0.005)
+            
+            pkg = models.Package(
+                tracking_number=f"SF{random.randint(10000000, 99999999)}",
+                recipient_name=f"{base_loc['recipient']}-{i+1}", # Unique-ish name
+                recipient_phone=f"138{random.randint(10000000, 99999999)}",
+                recipient_address=base_loc['address'],
+                latitude=base_loc['lat'] + jitter_lat,
+                longitude=base_loc['lng'] + jitter_lon,
+                weight=round(random.uniform(0.5, 5.0), 1),
+                volume=round(random.uniform(0.01, 0.2), 2),
+                status=models.PackageStatus.PENDING
+            )
+            new_packages.append(pkg)
+            
+        db.add_all(new_packages)
+        db.commit()
+        
+        return {"message": f"Successfully re-initialized {target_count} packages"}
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

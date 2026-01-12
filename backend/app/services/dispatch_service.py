@@ -155,9 +155,17 @@ class DispatchService:
                         "cluster_center": [cluster_center_lat, cluster_center_lon],
                         "total_distance_km": round(total_dist, 2),
                         "package_count": len(temp_ordered_packages),
+                        "total_weight": round(sum(getattr(p, 'weight', 1.0) or 1.0 for p in temp_ordered_packages), 1),
                         "color": ROUTE_COLORS[cluster_idx % len(ROUTE_COLORS)],
                         "generation": generation,
-                        "status": "optimizing"
+                        "status": "optimizing",
+                        "packages_ordered": [
+                            {
+                                "tracking_number": p.tracking_number,
+                                "recipient_name": p.recipient_name,
+                                "weight": getattr(p, 'weight', 1.0)
+                            } for p in temp_ordered_packages
+                        ]
                      }
                      # 频繁 commit 会影响性能，但为了演示效果...
                      # 实际上应该用 Redis 或 WebSocket，这里简化直接写库
@@ -189,8 +197,17 @@ class DispatchService:
                     "cluster_center": [cluster_center_lat, cluster_center_lon],
                     "total_distance_km": round(final_total_distance, 2),
                     "package_count": len(ordered_packages),
+                    "total_weight": round(sum(getattr(p, 'weight', 1.0) or 1.0 for p in ordered_packages), 1),
                     "color": ROUTE_COLORS[cluster_idx % len(ROUTE_COLORS)],
-                    "status": "optimized"
+                    "status": "optimized",
+                    "packages_ordered": [
+                        {
+                            "tracking_number": p.tracking_number,
+                            "recipient_name": p.recipient_name,
+                            "weight": getattr(p, 'weight', 1.0),
+                            "address": p.recipient_address
+                        } for p in ordered_packages
+                    ]
                 }
                 route.total_distance = final_total_distance
                 self.db.commit()

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from typing import List
 from app.db.session import get_db
 from app.schemas import all_schemas as schemas
@@ -62,6 +63,40 @@ def get_plan_routes(plan_id: int, db: Session = Depends(get_db)):
     routes = db.query(models.DeliveryRoute).filter(models.DeliveryRoute.plan_id == plan_id).all()
     return routes
 
+@router.delete("/plans/all")
+def clear_dispatch_history(db: Session = Depends(get_db)):
+    """
+    清空所有调度历史：
+    1. 删除所有路线
+    2. 删除所有计划
+    3. 重置所有包裹状态为 PENDING (待配送)
+    4. 重置所有快递员状态为 AVAILABLE (空闲)
+    """
+    try:
+        # 1. Delete all routes
+        db.query(models.DeliveryRoute).delete()
+        
+        # 2. Delete all plans
+        db.query(models.DeliveryPlan).delete()
+        
+        # 3. Reset package status
+        db.query(models.Package).update({
+            "status": models.PackageStatus.PENDING,
+            "route_id": None
+        })
+        
+        # 4. Reset courier status
+        db.query(models.Courier).update({
+            "status": models.CourierStatus.AVAILABLE,
+            "current_load": 0.0
+        })
+        
+        db.commit()
+        return {"message": "All history cleared successfully"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/reset-demo")
 def reset_demo_data(db: Session = Depends(get_db)):
     """
@@ -84,10 +119,23 @@ def reset_demo_data(db: Session = Depends(get_db)):
     package_sample_size = random.randint(100, 150)
     selected_package_ids = random.sample(all_package_ids, min(package_sample_size, len(all_package_ids)))
 
-    # 更新状态和重量
-    for pkg in db.query(models.Package).filter(models.Package.id.in_(selected_package_ids)):
+    from app.utils.seed_shanghai_data import get_shanghai_locations
+    # 获取300个随机地址
+    shanghai_locs = get_shanghai_locations()
+    # 从中随机抽取对应数量的地址赋予包裹
+    selected_locs = random.sample(shanghai_locs, len(selected_package_ids))
+    
+    # 更新状态、重量和位置信息
+    for i, pkg in enumerate(db.query(models.Package).filter(models.Package.id.in_(selected_package_ids))):
         pkg.status = models.PackageStatus.PENDING
         pkg.weight = round(random.uniform(0.5, 8.0), 1) # 0.5 - 8.0 kg
+        
+        # Assign random Shanghai location
+        loc = selected_locs[i]
+        pkg.latitude = loc["lat"]
+        pkg.longitude = loc["lng"]
+        pkg.recipient_address = loc["address"]
+        pkg.recipient_name = loc["recipient"]
 
     db.commit()
 
@@ -97,27 +145,67 @@ def reset_demo_data(db: Session = Depends(get_db)):
     })
     db.commit()
 
-    # 4. 随机抽取快递员设为AVAILABLE，并随机设置容量
+    # Calculate total weight of selected packages
+    selected_packages = db.query(models.Package).filter(models.Package.id.in_(selected_package_ids)).all()
+    total_package_weight = sum([p.weight for p in selected_packages])
+
+    # 4. 随机抽取初始 5-10 个快递员
     all_couriers = db.query(models.Courier).all()
     all_courier_ids = [c.id for c in all_couriers]
     
-    # 计算总包裹重量
-    total_pkg_weight = db.query(func.sum(models.Package.weight)).filter(models.Package.status == models.PackageStatus.PENDING).scalar() or 0
-    
-    # 动态决定需要的快递员数量，确保总容量足够 (1.2倍冗余)
-    target_capacity = total_pkg_weight * 1.2
-    
-    # 随机生成单人容量 (50-150kg)
-    avg_courier_capacity = 100.0
-    estimated_couriers_needed = int(target_capacity / avg_courier_capacity) + 1
-    courier_sample_size = max(5, min(estimated_couriers_needed, len(all_courier_ids))) # 至少5个，至多全部
-    
-    selected_courier_ids = random.sample(all_courier_ids, courier_sample_size)
+    courier_sample_size = random.randint(5, 10)
+    selected_courier_ids = random.sample(all_courier_ids, min(courier_sample_size, len(all_courier_ids)))
 
-    for courier in db.query(models.Courier).filter(models.Courier.id.in_(selected_courier_ids)):
+    # Activate them and assign random capacity
+    total_courier_capacity = 0.0
+    active_couriers = []
+    
+    # Calculate smart capacity based on expected average load
+    # To keep it "tight", we want capacity to be just slightly above the average load
+    num_couriers = len(selected_courier_ids)
+    if num_couriers > 0:
+        expected_avg_load = total_package_weight / num_couriers
+    else:
+        expected_avg_load = 50.0
+
+    for c_id in selected_courier_ids:
+        courier = db.query(models.Courier).filter(models.Courier.id == c_id).first()
         courier.status = models.CourierStatus.AVAILABLE
-        courier.max_capacity = round(random.uniform(80.0, 150.0), 1) # 80 - 150 kg
+        
+        # Set capacity to 1.1x - 1.4x of expected average load
+        # This ensures utilization is high (around 70-90%) but leaves a safety buffer
+        smart_capacity = expected_avg_load * random.uniform(1.1, 1.4)
+        
+        # Ensure a sane minimum (e.g. at least 30kg)
+        courier.max_capacity = round(max(30.0, smart_capacity), 1)
+        
+        total_courier_capacity += courier.max_capacity
+        active_couriers.append(courier)
 
+    # 5. Ensure Solvability: Add more couriers if capacity is insufficient
+    # Target: Total Capacity >= Total Weight * 1.15 (Tighten buffer to 15%)
+    target_capacity = total_package_weight * 1.15
+    
+    remaining_courier_ids = list(set(all_courier_ids) - set(selected_courier_ids))
+    
+    while total_courier_capacity < target_capacity:
+        if remaining_courier_ids:
+            # Add another courier
+            new_id = remaining_courier_ids.pop()
+            new_courier = db.query(models.Courier).filter(models.Courier.id == new_id).first()
+            new_courier.status = models.CourierStatus.AVAILABLE
+            new_courier.max_capacity = round(random.uniform(120.0, 200.0), 1) # Give higher capacity to help
+            total_courier_capacity += new_courier.max_capacity
+            active_couriers.append(new_courier)
+        else:
+            # No more couriers, boost existing capacities
+            for c in active_couriers:
+                boost = 50.0
+                c.max_capacity += boost
+                total_courier_capacity += boost
+                if total_courier_capacity >= target_capacity:
+                    break
+    
     db.commit()
 
     pending_count = db.query(models.Package).filter(models.Package.status == models.PackageStatus.PENDING).count()
@@ -132,3 +220,4 @@ def reset_demo_data(db: Session = Depends(get_db)):
         "available_couriers": available_couriers,
         "total_couriers": total_couriers
     }
+
