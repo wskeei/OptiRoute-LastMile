@@ -98,7 +98,21 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class UserResponse(UserBase, BaseSchema):
+    id: int
+    is_active: bool
+    created_at: datetime
+
 class User(UserBase, BaseSchema):
     id: int
     is_active: bool
     created_at: datetime
+
+# --- Auth Schemas ---
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

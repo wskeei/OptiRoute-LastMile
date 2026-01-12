@@ -1,5 +1,8 @@
 <template>
-  <el-container class="app-container">
+  <div v-if="isAuthPage" class="auth-layout">
+    <router-view />
+  </div>
+  <el-container v-else class="app-container">
     <el-aside :width="collapsed ? '64px' : '240px'" class="sidebar">
       <div class="logo" @click="collapsed = !collapsed">
         <el-icon><Operation /></el-icon>
@@ -47,8 +50,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
+
 const collapsed = ref(false)
+const route = useRoute()
+
+const isAuthPage = computed(() => {
+  return route.path === '/login' || route.path === '/register'
+})
 </script>
 
 <style>
