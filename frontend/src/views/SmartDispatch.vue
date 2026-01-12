@@ -45,7 +45,7 @@
             <div v-if="result" class="result-section">
               <el-alert type="success" :closable="false">
                 <template #title>
-                  ✅ 节省 {{ result.savedDistance }}km
+                  ✅ 节省 {{ result.savedDistance }}km <span v-if="result.generation"> (迭代: {{ result.generation }}代)</span>
                 </template>
               </el-alert>
             </div>
@@ -138,21 +138,28 @@ const startDispatch = async () => {
   }
 }
 
+const routeLayerGroup = ref<any>(null)
+
 const pollStatus = async (planId: number) => {
   const interval = setInterval(async () => {
     try {
       const res = await axios.get(`/api/v1/dispatch/plans/${planId}`)
+      
+      // 实时更新路线 (即使还在优化中)
+      if (res.data.routes && res.data.routes.length > 0) {
+        drawRoutes(res.data.routes)
+      }
+
       if (res.data.status === 'READY' || res.data.status === 'COMPLETED') {
         clearInterval(interval)
         step.value = 3
         loading.value = false
-
-        if (res.data.routes && res.data.routes.length > 0) {
-          drawRoutes(res.data.routes)
-          ElMessage.success('🎉 调度完成！')
+        
+        if (!res.data.routes || res.data.routes.length === 0) {
+           ElMessage.error('调度失败：没有生成路线，请确保有待调度的包裹')
+           step.value = 0
         } else {
-          ElMessage.error('调度失败：没有生成路线，请确保有待调度的包裹')
-          step.value = 0
+           ElMessage.success('🎉 调度完成！')
         }
       }
     } catch (e) {
@@ -163,66 +170,79 @@ const pollStatus = async (planId: number) => {
 }
 
 const drawRoutes = (routes: any[]) => {
-  console.log('drawRoutes called with', routes.length, 'routes')
+  if (!map) return
+  
+  // 初始化或清空路线图层组
+  if (!routeLayerGroup.value) {
+    routeLayerGroup.value = L.layerGroup().addTo(map)
+  } else {
+    routeLayerGroup.value.clearLayers()
+  }
+
   const colors = ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea']
   let totalDistance = 0
+  let maxGeneration = 0
 
   routes.forEach((route, idx) => {
-    console.log('Processing route', idx, route)
     if (route.geo_json?.coordinates) {
       const latlngs = route.geo_json.coordinates.map((c: any) => [c[1], c[0]])
       const color = route.geo_json.color || colors[idx % colors.length]
-      console.log('Drawing route with', latlngs.length, 'points, color:', color)
+      
+      // 检查是否在优化中
+      const isOptimizing = route.geo_json.status === 'optimizing'
+      if (route.geo_json.generation > maxGeneration) {
+        maxGeneration = route.geo_json.generation
+      }
 
       try {
         if ((L as any).polyline.antPath) {
           (L as any).polyline.antPath(latlngs, {
             color,
             weight: 4,
-            opacity: 0.7,
+            opacity: isOptimizing ? 0.5 : 0.7, // 优化中稍微透明一点
             pulseColor: '#FFFFFF',
-            delay: 800
-          }).addTo(map)
+            delay: isOptimizing ? 400 : 800, // 优化中动画快一点
+            dashArray: isOptimizing ? [10, 20] : [10, 10]
+          }).addTo(routeLayerGroup.value)
         } else {
           L.polyline(latlngs, {
             color,
             weight: 4,
             opacity: 0.7
-          }).addTo(map)
+          }).addTo(routeLayerGroup.value)
         }
       } catch (e) {
-        console.error('Error drawing route:', e)
         L.polyline(latlngs, {
           color,
           weight: 4,
           opacity: 0.7
-        }).addTo(map)
+        }).addTo(routeLayerGroup.value)
       }
 
       if (route.geo_json.cluster_center) {
         const [centerLat, centerLon] = route.geo_json.cluster_center
         const packageCount = route.geo_json.package_count || 10
-        const baseRadius = 5000
-        const radius = baseRadius + (packageCount * 100)
+        const baseRadius = 1000 // 缩小一点半径
+        const radius = baseRadius + (packageCount * 50)
 
         L.circle([centerLat, centerLon], {
           radius: radius,
           color: color,
           fillColor: color,
-          fillOpacity: 0.1,
-          weight: 2,
+          fillOpacity: 0.05,
+          weight: 1,
           dashArray: '5, 5'
-        }).addTo(map)
+        }).addTo(routeLayerGroup.value)
       }
 
       totalDistance += route.geo_json.total_distance_km || 0
     }
   })
 
-  console.log('Total distance:', totalDistance)
+  // 更新结果面板 (显示迭代代数)
   result.value = {
     savedDistance: totalDistance.toFixed(1),
-    savedCost: Math.round(totalDistance * 6)
+    generation: maxGeneration
   }
 }
 
@@ -246,9 +266,15 @@ const resetDemo = async () => {
     courierCount.value = availableCouriers.length.toString()
     config.value.k = availableCouriers.length
 
+    if (routeLayerGroup.value) {
+        routeLayerGroup.value.clearLayers()
+    }
+    
     map.eachLayer((layer: any) => {
       if (layer instanceof L.TileLayer) return
       if (layer instanceof L.Marker && layer.options.icon?.options?.html?.includes('667eea')) return
+      // Don't remove layers in the group again (optional check)
+      if (routeLayerGroup.value && routeLayerGroup.value.hasLayer(layer)) return
       map.removeLayer(layer)
     })
 

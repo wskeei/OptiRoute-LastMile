@@ -80,6 +80,33 @@ def test_kmeans_constraint():
         # 允许微小误差
         assert dist <= max_dist + 0.01, f"Centroid {centroid} is too far from depot ({dist} km)"
 
+def test_kmeans_capacity_constraint():
+    """测试 K-Means 容量约束"""
+    # 构造一个场景：3个点在东边，1个点在西边
+    # 2个快递员
+    # 东边3个点总重 30，西边1个点重 10
+    # 快递员容量限制 20
+    # 如果不考虑容量，东边3个点会聚成一类(30 > 20)，西边1个点一类
+    # 考虑容量，东边必须拆分
+    
+    east_points = [(39.9, 116.5 + i*0.01) for i in range(3)]
+    west_points = [(39.9, 116.3)]
+    all_p = east_points + west_points # total 4
+    
+    weights = [10.0, 10.0, 10.0, 10.0]
+    capacities = [20.0, 20.0] # 每个快递员只能拿2个
+    
+    kmeans = ConstrainedKMeans(k=2, max_iterations=50)
+    kmeans.fit(all_p, DEPOT, weights=weights, courier_capacities=capacities)
+    
+    clusters = kmeans.get_clusters(all_p)
+    
+    # 验证没有聚类超过容量
+    for cid, indices in clusters.items():
+        total_w = sum(weights[i] for i in indices)
+        print(f"Cluster {cid} weight: {total_w}")
+        assert total_w <= 20.0, f"Cluster {cid} overloaded with weight {total_w}"
+
 def test_genetic_algorithm_tsp():
     """测试遗传算法 TSP"""
     # 使用 GROUP1 的3个点 + 配送站

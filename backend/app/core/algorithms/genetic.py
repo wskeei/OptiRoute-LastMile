@@ -20,13 +20,14 @@ class GeneticAlgorithmTSP:
         self.elite_count = int(elite_ratio * population_size)
         self.tournament_size = tournament_size
         
-    def solve(self, addresses: List[Tuple[float, float]], depot: Tuple[float, float]) -> Tuple[List[int], List[float]]:
+    def solve(self, addresses: List[Tuple[float, float]], depot: Tuple[float, float], progress_callback=None) -> Tuple[List[int], List[float]]:
         """
         遗传算法求解 TSP
         
         Args:
             addresses: 收件地址坐标列表 [(lat, lon), ...]
             depot: 配送站坐标 (lat, lon)
+            progress_callback: Optional callable that receives (generation, best_route_indices, best_fitness)
             
         Returns:
             best_route: 最优路径的索引顺序 [idx1, idx2, ..., idxN]
@@ -39,45 +40,70 @@ class GeneticAlgorithmTSP:
             return [0], []
 
         # 1. 初始化种群
-        # 种群由路径索引的排列组成
         population = self._initialize_population(num_cities)
         
         best_fitness_history = []
         best_chromosome = None
         best_fitness = -1.0
         
+        # 自适应变异参数
+        current_mutation_rate = self.mutation_rate
+        stagnation_counter = 0
+        
         for generation in range(self.generations):
             # 2. 计算适应度
-            # fitnesses: List[float]
             fitnesses = [self._fitness(chromo, addresses, depot) for chromo in population]
             
             # 3. 记录最优解
             current_best_idx = np.argmax(fitnesses)
             current_best_fitness = fitnesses[current_best_idx]
+            current_best_chromo = population[current_best_idx]
+
+            # 3.1 局部搜索 (2-Opt) 优化当前最优解
+            # 仅对精英个体执行，避免性能开销过大
+            improved_chromo = self._two_opt_search(current_best_chromo, addresses, depot)
+            improved_fitness = self._fitness(improved_chromo, addresses, depot)
             
+            if improved_fitness > current_best_fitness:
+                current_best_fitness = improved_fitness
+                current_best_chromo = improved_chromo
+                # 更新种群中的最优个体
+                population[current_best_idx] = improved_chromo
+                fitnesses[current_best_idx] = improved_fitness
+
+            # 更新全局最优
             if current_best_fitness > best_fitness:
                 best_fitness = current_best_fitness
-                best_chromosome = population[current_best_idx][:]
+                best_chromosome = current_best_chromo[:]
+                stagnation_counter = 0
+                # 如果找到更好解，恢复基准变异率
+                current_mutation_rate = self.mutation_rate
+            else:
+                stagnation_counter += 1
+                
+            # 自适应变异：若 20 代无提升，增加变异率
+            if stagnation_counter > 20:
+                current_mutation_rate = min(0.5, current_mutation_rate * 1.5)
+                stagnation_counter = 0 # Reset to let it explore
             
             best_fitness_history.append(current_best_fitness)
+            
+            if progress_callback and generation % 5 == 0: # Check periodically
+                 progress_callback(generation, best_chromosome, current_best_fitness)
             
             # 4. 生成下一代
             new_population = []
             
             # 4.1 精英保留
-            # 获取适应度最高的索引
             elite_indices = np.argsort(fitnesses)[-self.elite_count:]
-            # argsort 是升序，取最后 elite_count 个
             for idx in elite_indices:
-                new_population.append(population[idx][:]) # Copy
+                new_population.append(population[idx][:])
                 
-            # 4.2 交叉和变异生成剩余个体
+            # 4.2 交叉和变异
             while len(new_population) < self.population_size:
-                # 选择
                 parent1 = self._tournament_selection(population, fitnesses)
                 parent2 = self._tournament_selection(population, fitnesses)
                 
-                # 交叉
                 if random.random() < self.crossover_rate:
                     child1 = self._order_crossover(parent1, parent2)
                     child2 = self._order_crossover(parent2, parent1)
@@ -85,9 +111,9 @@ class GeneticAlgorithmTSP:
                     child1 = parent1[:]
                     child2 = parent2[:]
                 
-                # 变异
-                child1 = self._swap_mutation(child1)
-                child2 = self._swap_mutation(child2)
+                # 使用当前自适应变异率
+                child1 = self._swap_mutation(child1, current_mutation_rate)
+                child2 = self._swap_mutation(child2, current_mutation_rate)
                 
                 new_population.append(child1)
                 if len(new_population) < self.population_size:
@@ -96,6 +122,43 @@ class GeneticAlgorithmTSP:
             population = new_population
             
         return best_chromosome, best_fitness_history
+
+    def _two_opt_search(self, route: List[int], addresses: List[Tuple[float, float]], depot: Tuple[float, float]) -> List[int]:
+        """
+        2-Opt 局部搜索
+        """
+        best_route = route[:]
+        best_dist = 1.0 / self._fitness(route, addresses, depot) # 反推距离
+        
+        improved = True
+        max_iterations = 50 # 限制局部搜索次数，防止耗时过长
+        count = 0
+        
+        while improved and count < max_iterations:
+            improved = False
+            count += 1
+            n = len(route)
+            
+            # 尝试交换所有可能的边 (i, i+1) 和 (j, j+1)
+            # 路径: Depot -> r[0] ... r[n-1] -> Depot
+            # 2-opt 在线性路径上通常是翻转片段 r[i:j+1]
+            
+            for i in range(n - 1):
+                for j in range(i + 1, n):
+                    # 翻转 i 到 j 的片段
+                    new_route = best_route[:]
+                    new_route[i:j+1] = best_route[i:j+1][::-1]
+                    
+                    dist = 1.0 / self._fitness(new_route, addresses, depot)
+                    
+                    if dist < best_dist - 1e-6:
+                        best_dist = dist
+                        best_route = new_route
+                        improved = True
+                        break # First improvement 策略
+                if improved: break
+                
+        return best_route
 
     def _initialize_population(self, num_cities: int) -> List[List[int]]:
         """初始化随机种群"""
@@ -148,6 +211,10 @@ class GeneticAlgorithmTSP:
         保留 parent1 的一段子序列，剩余部分按 parent2 的顺序填充
         """
         size = len(parent1)
+        
+        # Handle case where size < 2
+        if size < 2: return parent1[:]
+
         start, end = sorted(random.sample(range(size), 2))
         
         child = [-1] * size
@@ -159,7 +226,7 @@ class GeneticAlgorithmTSP:
         
         current_idx = end
         for gene in p2_rotated:
-            if gene not in child: # 这是一个较慢的操作 (O(N)), 但对于 TSP 规模 (N<100) 可接受
+            if gene not in child: 
                 if current_idx >= size:
                     current_idx = 0
                 
@@ -171,9 +238,9 @@ class GeneticAlgorithmTSP:
                 
         return child
 
-    def _swap_mutation(self, chromosome: List[int]) -> List[int]:
+    def _swap_mutation(self, chromosome: List[int], mutation_rate: float) -> List[int]:
         """交换变异"""
-        if random.random() < self.mutation_rate:
+        if random.random() < mutation_rate and len(chromosome) > 1:
             idx1, idx2 = random.sample(range(len(chromosome)), 2)
             chromosome[idx1], chromosome[idx2] = chromosome[idx2], chromosome[idx1]
         return chromosome

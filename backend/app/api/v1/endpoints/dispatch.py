@@ -78,15 +78,17 @@ def reset_demo_data(db: Session = Depends(get_db)):
     })
     db.commit()
 
-    # 2. 随机抽取100-150个包裹设为PENDING
+    # 2. 随机抽取100-150个包裹设为PENDING，并随机设置重量
     all_packages = db.query(models.Package).all()
     all_package_ids = [pkg.id for pkg in all_packages]
     package_sample_size = random.randint(100, 150)
     selected_package_ids = random.sample(all_package_ids, min(package_sample_size, len(all_package_ids)))
 
-    db.query(models.Package).filter(models.Package.id.in_(selected_package_ids)).update({
-        "status": models.PackageStatus.PENDING
-    }, synchronize_session=False)
+    # 更新状态和重量
+    for pkg in db.query(models.Package).filter(models.Package.id.in_(selected_package_ids)):
+        pkg.status = models.PackageStatus.PENDING
+        pkg.weight = round(random.uniform(0.5, 8.0), 1) # 0.5 - 8.0 kg
+
     db.commit()
 
     # 3. 将所有快递员设为OFF_DUTY状态
@@ -95,15 +97,27 @@ def reset_demo_data(db: Session = Depends(get_db)):
     })
     db.commit()
 
-    # 4. 随机抽取5-10个快递员设为AVAILABLE
+    # 4. 随机抽取快递员设为AVAILABLE，并随机设置容量
     all_couriers = db.query(models.Courier).all()
     all_courier_ids = [c.id for c in all_couriers]
-    courier_sample_size = random.randint(5, min(10, len(all_courier_ids)))
+    
+    # 计算总包裹重量
+    total_pkg_weight = db.query(func.sum(models.Package.weight)).filter(models.Package.status == models.PackageStatus.PENDING).scalar() or 0
+    
+    # 动态决定需要的快递员数量，确保总容量足够 (1.2倍冗余)
+    target_capacity = total_pkg_weight * 1.2
+    
+    # 随机生成单人容量 (50-150kg)
+    avg_courier_capacity = 100.0
+    estimated_couriers_needed = int(target_capacity / avg_courier_capacity) + 1
+    courier_sample_size = max(5, min(estimated_couriers_needed, len(all_courier_ids))) # 至少5个，至多全部
+    
     selected_courier_ids = random.sample(all_courier_ids, courier_sample_size)
 
-    db.query(models.Courier).filter(models.Courier.id.in_(selected_courier_ids)).update({
-        "status": models.CourierStatus.AVAILABLE
-    }, synchronize_session=False)
+    for courier in db.query(models.Courier).filter(models.Courier.id.in_(selected_courier_ids)):
+        courier.status = models.CourierStatus.AVAILABLE
+        courier.max_capacity = round(random.uniform(80.0, 150.0), 1) # 80 - 150 kg
+
     db.commit()
 
     pending_count = db.query(models.Package).filter(models.Package.status == models.PackageStatus.PENDING).count()

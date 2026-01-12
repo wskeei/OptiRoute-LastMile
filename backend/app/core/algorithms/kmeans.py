@@ -145,42 +145,126 @@ class ConstrainedKMeans:
         self.labels = None
         self.inertia = 0.0
 
-    def fit(self, recipients: List[Tuple[float, float]], depot: Tuple[float, float]):
+    def fit(self, recipients: List[Tuple[float, float]], depot: Tuple[float, float], weights: List[float] = None, courier_capacities: List[float] = None):
         """
-        执行约束 K-Means 聚类
+        执行约束 K-Means 聚类 (带容量约束)
         
         Args:
             recipients: List of (lat, lon) tuples
             depot: (lat, lon) tuple
+            weights: List of weights for each recipient (optional)
+            courier_capacities: List of capacity for each courier/cluster (optional)
         """
         points = np.array(recipients)
+        n_points = len(points)
         
+        # 默认权重为1，默认容量无穷大
+        if weights is None:
+            weights = np.ones(n_points)
+        if courier_capacities is None:
+            courier_capacities = [float('inf')] * self.k
+            
         # 1. 初始化聚类中心
         self.centroids = initialize_centroids_around_depot(depot, self.k)
         
         for iteration in range(self.max_iterations):
             prev_centroids = self.centroids.copy()
             
-            # 2. 分配点到聚类
-            self.labels = assign_points_to_clusters(points, self.centroids)
+            # 2. 分配点到聚类 (带容量约束)
+            self.labels = self._assign_points_capacitated(points, self.centroids, weights, courier_capacities)
             
             # 3. 更新聚类中心（带约束）
             self.centroids = update_centroids_with_constraint(
                 points, self.labels, self.k, depot, self.max_distance_from_depot
             )
             
-            # 4. 检查收敛 (中心点移动距离小于阈值)
-            # 使用简单的欧氏距离判断收敛即可，不需要 Haversine
+            # 4. 检查收敛
             shift = np.linalg.norm(self.centroids - prev_centroids)
             if shift < self.tolerance:
                 break
         
-        # 计算最终的 Inertia (聚类内距离平方和，这里用距离和)
+        # 计算 Inertia
+        self._calculate_inertia(points)
+        return self
+
+    def _assign_points_capacitated(self, points: np.ndarray, centroids: np.ndarray, weights: List[float], capacities: List[float]) -> np.ndarray:
+        """
+        带容量约束的分配算法
+        使用贪婪策略：优先分配距离近的点，若满载则找次优
+        """
+        n_points = points.shape[0]
+        k = centroids.shape[0]
+        
+        # 计算所有点到所有中心的距离 (N, K)
+        # points: (N, 2), centroids: (K, 2)
+        # 扩展维度进行广播
+        points_exp = points[:, np.newaxis, :]
+        centroids_exp = centroids[np.newaxis, :, :]
+        
+        dists = haversine_vectorized(
+            points_exp[:, :, 0], points_exp[:, :, 1],
+            centroids_exp[:, :, 0], centroids_exp[:, :, 1]
+        )
+        
+        # 记录每个点到每个中心的信息：(distance, point_idx, cluster_idx)
+        # 但这样排序比较慢 (N*K)。
+        # 优化策略：
+        # 对每个点，按距离排序其偏好的 cluster
+        
+        # 1. 获取每个点对所有聚类的距离排序索引 (N, K)
+        sorted_indices = np.argsort(dists, axis=1)
+        
+        labels = np.full(n_points, -1, dtype=int)
+        current_loads = np.zeros(k)
+        
+        # 2. 决定分配顺序
+        # 策略A：按 "遗憾值" (regret) 排序？(次优距离 - 最优距离) 越大越需要优先满足
+        # 策略B：简单随机顺序 (避免死锁)
+        # 策略C：按在此聚类中的距离排序 (最近的优先得) -> 这会导致远点被踢皮球
+        
+        # 采用策略A (Regret-based)
+        regrets = np.zeros(n_points)
+        for i in range(n_points):
+            if k > 1:
+                regrets[i] = dists[i, sorted_indices[i, 1]] - dists[i, sorted_indices[i, 0]]
+            else:
+                regrets[i] = 0
+                
+        # 按遗憾值降序排列，优先处理 "如果不给它最优，它会损失很大" 的点
+        priority_order = np.argsort(regrets)[::-1]
+        
+        for point_idx in priority_order:
+            point_weight = weights[point_idx]
+            assigned = False
+            
+            # 尝试分配给首选、次选、...
+            for rank in range(k):
+                cluster_idx = sorted_indices[point_idx, rank]
+                
+                if current_loads[cluster_idx] + point_weight <= capacities[cluster_idx]:
+                    labels[point_idx] = cluster_idx
+                    current_loads[cluster_idx] += point_weight
+                    assigned = True
+                    break
+            
+            if not assigned:
+                # 如果所有都塞满了 (理论上如果总容量够不应该发生，但可能因碎片问题发生)
+                # 强制分配给当前负载最小的 或者 溢出最小的？
+                # 这里简单处理：分配给距离最近的，即使溢出 (软约束)
+                # 这样可以保证算法运行下去，但会违反约束。
+                # 实际生产中可能需要报错或增加车。
+                fallback_cluster = sorted_indices[point_idx, 0]
+                labels[point_idx] = fallback_cluster
+                current_loads[fallback_cluster] += point_weight
+                
+        return labels
+
+    def _calculate_inertia(self, points: np.ndarray):
+        """计算 Inertia"""
         self.inertia = 0.0
         for i in range(self.k):
             cluster_points = points[self.labels == i]
             if len(cluster_points) > 0:
-                # 计算该聚类内所有点到中心的距离
                 c_lat, c_lon = self.centroids[i]
                 dists = haversine_vectorized(
                     cluster_points[:, 0], cluster_points[:, 1],
@@ -188,10 +272,8 @@ class ConstrainedKMeans:
                 )
                 self.inertia += np.sum(dists)
 
-        return self
-
     def predict(self, recipients: List[Tuple[float, float]]) -> np.ndarray:
-        """预测新点的聚类归属"""
+        """预测新点的聚类归属 (不考虑容量)"""
         points = np.array(recipients)
         return assign_points_to_clusters(points, self.centroids)
     

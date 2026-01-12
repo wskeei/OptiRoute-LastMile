@@ -86,6 +86,7 @@ def seed_shanghai_packages():
                     recipient_address=address,
                     latitude=lat + random.uniform(-0.005, 0.005),  # 增加偏移范围
                     longitude=lon + random.uniform(-0.005, 0.005),
+                    weight=round(random.uniform(0.5, 5.0), 1), # 随机重量 0.5 - 5.0 kg
                     status=PackageStatus.ASSIGNED  # 初始状态设为ASSIGNED
                 )
                 db.add(package)

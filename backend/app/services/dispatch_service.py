@@ -87,46 +87,89 @@ class DispatchService:
             # K值取快递员数量，但不能超过包裹数
             k = min(num_couriers, num_packages)
             
-            # 2. 执行 K-Means 聚类
+            # 2. 执行 K-Means 聚类 (带容量约束)
             recipient_coords = [(p.latitude, p.longitude) for p in packages]
+            weights = [getattr(p, 'weight', 1.0) or 1.0 for p in packages] # Ensure weight is not None
             depot_coord = (station.latitude, station.longitude)
+            
+            # 获取快递员容量
+            courier_capacities = [c.max_capacity if c.max_capacity else 50.0 for c in couriers]
 
             kmeans = ConstrainedKMeans(k=k, max_distance_from_depot=50.0)
-            kmeans.fit(recipient_coords, depot_coord)
+            kmeans.fit(recipient_coords, depot_coord, weights=weights, courier_capacities=courier_capacities)
             clusters = kmeans.get_clusters(recipient_coords)
 
+            # 更新计划状态：K-Means 完成
+            plan.algorithm_meta = {
+                "step": "k_means_done",
+                "clusters": clusters
+            }
+            self.db.commit()
+
             # 3. 对每个聚类执行 GA 路径优化并分配快递员
-            # 简单的分配策略：按顺序分配（更高级的策略是考虑快递员当前负载或位置）
+            temp_routes = {} # cluster_idx -> route_obj
 
             for cluster_idx, pkg_indices in clusters.items():
                 if not pkg_indices:
                     continue
 
-                # 获取该聚类的包裹对象
-                cluster_packages = [packages[i] for i in pkg_indices]
-                cluster_coords = [recipient_coords[i] for i in pkg_indices]
-
-                # 计算聚类中心
-                cluster_center_lat = sum(coord[0] for coord in cluster_coords) / len(cluster_coords)
-                cluster_center_lon = sum(coord[1] for coord in cluster_coords) / len(cluster_coords)
-
-                # 执行 GA-TSP
-                ga = GeneticAlgorithmTSP(population_size=50, generations=100) # 快速版参数
-                best_route_indices, _ = ga.solve(cluster_coords, depot_coord)
-
-                # 构建 DeliveryRoute
+                # ... (Pre-create route object to allow updates)
                 courier = couriers[cluster_idx] if cluster_idx < len(couriers) else None
-
+                
                 route = models.DeliveryRoute(
                     plan_id=plan.id,
                     courier_id=courier.id if courier else None,
-                    geo_json={"indices": best_route_indices}, # 临时值，下面会更新
-                    total_distance=0.0 # 临时值，下面会更新
+                    geo_json={"status": "calculating"},
+                    total_distance=0.0
                 )
                 self.db.add(route)
-                self.db.flush() # 获取 route.id
+                self.db.flush() 
+                temp_routes[cluster_idx] = route
 
-                # 更新包裹状态并关联路线
+            self.db.commit() # Commit so routes allow updates
+
+            for cluster_idx, pkg_indices in clusters.items():
+                if not pkg_indices:
+                    continue
+
+                cluster_packages = [packages[i] for i in pkg_indices]
+                cluster_coords = [recipient_coords[i] for i in pkg_indices]
+                cluster_center_lat = sum(coord[0] for coord in cluster_coords) / len(cluster_coords)
+                cluster_center_lon = sum(coord[1] for coord in cluster_coords) / len(cluster_coords)
+                
+                route = temp_routes[cluster_idx]
+
+                # 定义回调函数来更新进度
+                def ga_progress_callback(generation, best_route_indices, best_fitness):
+                     # 构建临时路径
+                     temp_ordered_packages = [cluster_packages[i] for i in best_route_indices]
+                     temp_coords = [depot_coord] + [(p.latitude, p.longitude) for p in temp_ordered_packages] + [depot_coord]
+                     
+                     total_dist = 0.0
+                     for i in range(len(temp_coords) - 1):
+                        total_dist += haversine_distance(temp_coords[i][0], temp_coords[i][1], temp_coords[i+1][0], temp_coords[i+1][1])
+
+                     route.geo_json = {
+                        "type": "LineString",
+                        "coordinates": [[lon, lat] for lat, lon in temp_coords],
+                        "cluster_center": [cluster_center_lat, cluster_center_lon],
+                        "total_distance_km": round(total_dist, 2),
+                        "package_count": len(temp_ordered_packages),
+                        "color": ROUTE_COLORS[cluster_idx % len(ROUTE_COLORS)],
+                        "generation": generation,
+                        "status": "optimizing"
+                     }
+                     # 频繁 commit 会影响性能，但为了演示效果...
+                     # 实际上应该用 Redis 或 WebSocket，这里简化直接写库
+                     # 只在特定代数 commit?
+                     if generation % 20 == 0:
+                        self.db.commit()
+
+                # 执行 GA-TSP
+                ga = GeneticAlgorithmTSP(population_size=50, generations=100)
+                best_route_indices, _ = ga.solve(cluster_coords, depot_coord, progress_callback=ga_progress_callback)
+
+                # 更新最终结果
                 ordered_packages = []
                 for local_idx in best_route_indices:
                     pkg = cluster_packages[local_idx]
@@ -134,29 +177,23 @@ class DispatchService:
                     pkg.status = models.PackageStatus.ASSIGNED
                     ordered_packages.append(pkg)
 
-                # 生成完整路径坐标（配送站 -> 包裹点 -> 配送站）
                 route_coords = [depot_coord] + [(p.latitude, p.longitude) for p in ordered_packages] + [depot_coord]
-
-                # 计算总距离
-                total_distance = 0.0
+                
+                final_total_distance = 0.0
                 for i in range(len(route_coords) - 1):
-                    lat1, lon1 = route_coords[i]
-                    lat2, lon2 = route_coords[i + 1]
-                    total_distance += haversine_distance(lat1, lon1, lat2, lon2)
+                    final_total_distance += haversine_distance(route_coords[i][0], route_coords[i][1], route_coords[i+1][0], route_coords[i+1][1])
 
-                # 分配颜色
-                route_color = ROUTE_COLORS[cluster_idx % len(ROUTE_COLORS)]
-
-                # 更新 geo_json 包含所有元数据
                 route.geo_json = {
                     "type": "LineString",
-                    "coordinates": [[lon, lat] for lat, lon in route_coords], # GeoJSON uses [lon, lat]
+                    "coordinates": [[lon, lat] for lat, lon in route_coords],
                     "cluster_center": [cluster_center_lat, cluster_center_lon],
-                    "total_distance_km": round(total_distance, 2),
+                    "total_distance_km": round(final_total_distance, 2),
                     "package_count": len(ordered_packages),
-                    "color": route_color
+                    "color": ROUTE_COLORS[cluster_idx % len(ROUTE_COLORS)],
+                    "status": "optimized"
                 }
-                route.total_distance = total_distance
+                route.total_distance = final_total_distance
+                self.db.commit()
                 
             # 4. 完成
             plan.status = models.PlanStatus.READY
