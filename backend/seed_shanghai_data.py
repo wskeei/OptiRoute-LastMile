@@ -74,22 +74,25 @@ def seed_shanghai_packages():
         # 清除现有包裹
         db.query(Package).delete()
 
-        # 生成100个包裹
-        for i, (address, lat, lon) in enumerate(SHANGHAI_LOCATIONS, 1):
-            name = random.choice(SURNAMES) + random.choice(GIVEN_NAMES)
-            package = Package(
-                tracking_number=f"SF{random.randint(100000000000, 999999999999)}",
-                recipient_name=name,
-                recipient_phone=generate_phone(),
-                recipient_address=address,
-                latitude=lat + random.uniform(-0.002, 0.002),  # 添加小偏移
-                longitude=lon + random.uniform(-0.002, 0.002),
-                status=PackageStatus.PENDING
-            )
-            db.add(package)
+        # 生成300个包裹（每个地点生成3个包裹）
+        package_count = 0
+        for round_num in range(3):
+            for i, (address, lat, lon) in enumerate(SHANGHAI_LOCATIONS, 1):
+                name = random.choice(SURNAMES) + random.choice(GIVEN_NAMES)
+                package = Package(
+                    tracking_number=f"SF{random.randint(100000000000, 999999999999)}",
+                    recipient_name=name,
+                    recipient_phone=generate_phone(),
+                    recipient_address=address,
+                    latitude=lat + random.uniform(-0.005, 0.005),  # 增加偏移范围
+                    longitude=lon + random.uniform(-0.005, 0.005),
+                    status=PackageStatus.ASSIGNED  # 初始状态设为ASSIGNED
+                )
+                db.add(package)
+                package_count += 1
 
         db.commit()
-        print(f"✅ 成功生成 {len(SHANGHAI_LOCATIONS)} 个上海地点包裹数据")
+        print(f"✅ 成功生成 {package_count} 个上海地点包裹数据")
     except Exception as e:
         print(f"❌ 错误: {e}")
         db.rollback()
