@@ -25,7 +25,7 @@ class CourierBase(BaseModel):
     name: str
     phone: str
     status: CourierStatus = CourierStatus.OFF_DUTY
-    max_capacity: int = 50
+    max_capacity: float = 50.0
     station_id: int
 
 class CourierCreate(CourierBase):
@@ -35,7 +35,7 @@ class CourierUpdate(BaseModel):
     name: Optional[str] = None
     phone: Optional[str] = None
     status: Optional[CourierStatus] = None
-    max_capacity: Optional[int] = None
+    max_capacity: Optional[float] = None
     station_id: Optional[int] = None
 
 class Courier(CourierBase, BaseSchema):
@@ -49,6 +49,8 @@ class PackageBase(BaseModel):
     recipient_address: str
     latitude: float
     longitude: float
+    weight: float = 1.0
+    volume: float = 0.1
 
 class PackageCreate(PackageBase):
     pass
@@ -73,6 +75,7 @@ class RouteBase(BaseModel):
 class Route(RouteBase, BaseSchema):
     id: int
     packages: List[Package] = []
+    courier: Optional[Courier] = None
 
 # --- Plan Schemas ---
 class PlanBase(BaseModel):

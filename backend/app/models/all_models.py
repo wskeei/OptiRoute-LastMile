@@ -61,7 +61,7 @@ class Courier(Base):
     phone = Column(String)
     station_id = Column(Integer, ForeignKey("stations.id"))
     status = Column(Enum(CourierStatus), default=CourierStatus.OFF_DUTY)
-    max_capacity = Column(Integer, default=50) # 最大载货量
+    max_capacity = Column(Float, default=50.0) # 最大载货量
     
     station = relationship("DeliveryStation", back_populates="couriers")
     routes = relationship("DeliveryRoute", back_populates="courier")
@@ -76,6 +76,8 @@ class Package(Base):
     recipient_address = Column(String)
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+    weight = Column(Float, default=1.0) # kg
+    volume = Column(Float, default=0.1) # m3
     status = Column(Enum(PackageStatus), default=PackageStatus.PENDING)
     
     # 一个包裹属于某个计划中的某条路线（分配后）
