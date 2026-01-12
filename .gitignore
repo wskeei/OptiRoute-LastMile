@@ -34,3 +34,6 @@ frontend/package-lock.json
 *.njsproj
 *.sln
 *.sw?
+
+# Project documentation (local only)
+claude.md
