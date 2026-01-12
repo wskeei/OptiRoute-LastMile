@@ -47,9 +47,16 @@
       </div>
     </div>
 
-    <div class="chart-section glass-card">
-      <h3>📈 最近调度趋势</h3>
-      <div ref="chartRef" style="height: 280px"></div>
+    <div class="bottom-section">
+      <div class="chart-section glass-card">
+        <h3>📈 最近调度趋势</h3>
+        <div ref="chartRef" style="height: 280px"></div>
+      </div>
+
+      <div class="ranking-section glass-card">
+        <h3>🏆 优秀快递员 (Top 5)</h3>
+        <div ref="courierChartRef" style="height: 300px"></div>
+      </div>
     </div>
   </div>
 </template>
@@ -61,14 +68,22 @@ import * as echarts from 'echarts'
 
 const stats = ref({ totalPackages: 0, totalCouriers: 0, totalPlans: 0, savedDistance: 0 })
 const chartRef = ref()
+const courierChartRef = ref()
+const courierRanking = ref<any[]>([])
 
 onMounted(async () => {
   try {
-    const [packagesRes, couriersRes, plansRes] = await Promise.all([
+    const [packagesRes, couriersRes, plansRes, rankRes] = await Promise.all([
       axios.get('/api/v1/delivery/packages'),
       axios.get('/api/v1/delivery/couriers'),
-      axios.get('/api/v1/dispatch/plans')
+      axios.get('/api/v1/dispatch/plans'),
+      axios.get('/api/v1/stats/courier-ranking')
     ])
+
+    courierRanking.value = rankRes.data.map((c: any) => ({
+      name: c.name,
+      count: c.delivered_count
+    }))
 
     stats.value.totalPackages = packagesRes.data.length
     stats.value.totalCouriers = couriersRes.data.length
@@ -106,6 +121,32 @@ onMounted(async () => {
         ]
       })
     }
+
+    if (courierChartRef.value && courierRanking.value.length > 0) {
+      const chart = echarts.init(courierChartRef.value)
+      // Take top 5 and reverse for horizontal bar (so #1 is at top)
+      const top5 = courierRanking.value.slice(0, 5).reverse()
+      
+      chart.setOption({
+        tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+        grid: { left: '3%', right: '5%', bottom: '3%', top: '3%', containLabel: true },
+        xAxis: { type: 'value', name: '送单量' },
+        yAxis: { type: 'category', data: top5.map(c => c.name) },
+        series: [
+          {
+            type: 'bar',
+            data: top5.map(c => c.count),
+            itemStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                { offset: 0, color: '#83a4d4' },
+                { offset: 1, color: '#b6fbff' }
+              ])
+            },
+            label: { show: true, position: 'right' }
+          }
+        ]
+      })
+    }
   } catch (e) {
     console.error(e)
   }
@@ -133,4 +174,18 @@ onMounted(async () => {
 .stat-label { font-size: 14px; color: #718096; }
 
 .chart-section h3 { margin: 0 0 16px 0; }
+
+.bottom-section { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+.ranking-section h3 { margin: 0 0 16px 0; }
+.ranking-list { display: flex; flex-direction: column; gap: 12px; }
+.ranking-item { display: flex; align-items: center; padding: 12px; background: rgba(255,255,255,0.5); border-radius: 12px; transition: all 0.2s; }
+.ranking-item:hover { transform: translateX(4px); background: rgba(255,255,255,0.8); }
+.rank-index { width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; color: #718096; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 12px; }
+.rank-1 { background: #ecc94b; color: white; }
+.rank-2 { background: #9f7aea; color: white; }
+.rank-3 { background: #ed8936; color: white; }
+.courier-info { flex: 1; display: flex; flex-direction: column; }
+.courier-name { font-weight: bold; color: #2d3748; }
+.courier-score { font-size: 12px; color: #718096; }
+.medal { font-size: 20px; }
 </style>

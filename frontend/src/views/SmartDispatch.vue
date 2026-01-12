@@ -75,14 +75,30 @@ let map: any = null
 const stationId = ref(1)
 const allPackages = ref<any[]>([])
 
+const packageLayerGroup = ref<any>(null)
+
 const drawPackageMarkers = () => {
+  if (!map) return
+
+  // Initialize or clear package layer group
+  if (!packageLayerGroup.value) {
+    packageLayerGroup.value = L.layerGroup().addTo(map)
+  } else {
+    packageLayerGroup.value.clearLayers()
+  }
+
   const pendingPackages = allPackages.value.filter((pkg: any) => pkg.status === 'PENDING')
   pendingPackages.forEach((pkg: any) => {
-    const pkgIcon = L.divIcon({
-      html: '<div style="background:#3b82f6;width:8px;height:8px;border-radius:50%;border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);"></div>',
-      iconSize: [8, 8]
+    L.circleMarker([pkg.latitude, pkg.longitude], {
+      radius: 6,
+      fillColor: '#3b82f6',
+      color: '#fff',
+      weight: 2,
+      opacity: 1,
+      fillOpacity: 0.9
     })
-    L.marker([pkg.latitude, pkg.longitude], { icon: pkgIcon }).addTo(map).bindPopup(`${pkg.tracking_number}<br>${pkg.recipient_name}`)
+    .addTo(packageLayerGroup.value)
+    .bindPopup(`<b>${pkg.recipient_name}</b><br>单号: ${pkg.tracking_number}<br>重量: ${pkg.weight}kg`)
   })
 }
 
@@ -109,6 +125,30 @@ onMounted(async () => {
     L.marker([31.2304, 121.4737], { icon: stationIcon }).addTo(map).bindPopup('配送站')
 
     drawPackageMarkers()
+    
+    // Check for active plan to restore state
+    const plansRes = await axios.get('/api/v1/dispatch/plans')
+    const activePlans = plansRes.data.filter((p: any) => p.status === 'READY' || p.status === 'COMPLETED' || p.status === 'OPTIMIZING')
+    
+    if (activePlans.length > 0) {
+      const latestPlan = activePlans[0]
+      if (latestPlan.routes && latestPlan.routes.length > 0) {
+        drawRoutes(latestPlan.routes)
+        step.value = 3
+        
+        // Restore config if available
+        if (latestPlan.algorithm_meta) {
+            config.value = latestPlan.algorithm_meta
+        }
+        
+        ElMessage.success('已恢复上次的调度结果')
+      }
+    }
+
+    // Force map resize just in case
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 200)
   } catch (e) {
     console.error(e)
   }
@@ -199,9 +239,9 @@ const drawRoutes = (routes: any[]) => {
           (L as any).polyline.antPath(latlngs, {
             color,
             weight: 4,
-            opacity: isOptimizing ? 0.5 : 0.7, // 优化中稍微透明一点
+            opacity: isOptimizing ? 0.5 : 0.7,
             pulseColor: '#FFFFFF',
-            delay: isOptimizing ? 400 : 800, // 优化中动画快一点
+            delay: isOptimizing ? 400 : 800,
             dashArray: isOptimizing ? [10, 20] : [10, 10]
           }).addTo(routeLayerGroup.value)
         } else {
@@ -211,19 +251,44 @@ const drawRoutes = (routes: any[]) => {
             opacity: 0.7
           }).addTo(routeLayerGroup.value)
         }
+
+        // Draw package markers on the route
+        const pkgs = route.geo_json.packages_ordered || []
+        
+        // coordinates: [Depot, Pkg1, Pkg2, ..., Depot]
+        if (route.geo_json.coordinates.length > 2) {
+          route.geo_json.coordinates.slice(1, -1).forEach((coord: any, pkgIdx: number) => {
+             // Create marker
+             const icon = L.divIcon({
+                html: `<div style="background:${color};color:white;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">${pkgIdx + 1}</div>`,
+                iconSize: [24, 24]
+             })
+             const marker = L.marker([coord[1], coord[0]], { icon }).addTo(routeLayerGroup.value)
+
+             // Bind detailed popup
+             if (pkgs[pkgIdx]) {
+                const p = pkgs[pkgIdx]
+                marker.bindPopup(`
+                  <div style="font-size:13px;">
+                    <b>${pkgIdx + 1}. ${p.recipient_name || '收件人'}</b><br>
+                    <span style="color:#666">单号: ${p.tracking_number || '-'}</span><br>
+                    <span style="color:#666">重量: ${p.weight || 1}kg</span><br>
+                    <span style="color:#666">${p.address || ''}</span>
+                  </div>
+                `)
+             }
+          })
+        }
+
       } catch (e) {
-        L.polyline(latlngs, {
-          color,
-          weight: 4,
-          opacity: 0.7
-        }).addTo(routeLayerGroup.value)
+        console.error(e)
       }
 
       if (route.geo_json.cluster_center) {
         const [centerLat, centerLon] = route.geo_json.cluster_center
         const packageCount = route.geo_json.package_count || 10
-        const baseRadius = 1000 // 缩小一点半径
-        const radius = baseRadius + (packageCount * 50)
+        const baseRadius = 5000 // 参考实时监控地图的大小
+        const radius = baseRadius + (packageCount * 100)
 
         L.circle([centerLat, centerLon], {
           radius: radius,
@@ -269,14 +334,9 @@ const resetDemo = async () => {
     if (routeLayerGroup.value) {
         routeLayerGroup.value.clearLayers()
     }
-    
-    map.eachLayer((layer: any) => {
-      if (layer instanceof L.TileLayer) return
-      if (layer instanceof L.Marker && layer.options.icon?.options?.html?.includes('667eea')) return
-      // Don't remove layers in the group again (optional check)
-      if (routeLayerGroup.value && routeLayerGroup.value.hasLayer(layer)) return
-      map.removeLayer(layer)
-    })
+    if (packageLayerGroup.value) {
+        packageLayerGroup.value.clearLayers()
+    }
 
     drawPackageMarkers()
   } catch (e: any) {
@@ -295,7 +355,7 @@ const resetDemo = async () => {
 .map-panel { flex: 1; padding: 24px; display: flex; flex-direction: column; min-height: 0; }
 .map-panel h3 { margin: 0 0 16px 0; }
 .map-container { flex: 1; position: relative; min-height: 0; }
-.map-view { width: 100%; height: 100%; border-radius: 12px; overflow: hidden; }
+.map-view { width: 100%; height: 100%; min-height: 500px; border-radius: 12px; overflow: hidden; }
 .config-overlay { position: absolute; top: 16px; left: 16px; width: 280px; max-height: calc(100% - 32px); overflow-y: auto; z-index: 1000; padding: 16px; background: rgba(255,255,255,0.95); }
 .config-overlay h3 { margin: 0 0 12px 0; font-size: 16px; }
 .progress-section { margin-top: 16px; }

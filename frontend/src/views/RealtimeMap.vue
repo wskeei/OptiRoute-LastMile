@@ -42,7 +42,7 @@ let map: any = null
 const routes = ref<any[]>([])
 const courierStatus = ref<any[]>([])
 const currentStep = ref(0)
-const courierMarkers = ref<any[]>([])
+let courierMarkers: any[] = [] // Non-reactive to prevent Leaflet proxy issues
 const stationCoord = [31.2304, 121.4737]
 const colors = ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea']
 
@@ -75,7 +75,10 @@ const loadLatestDispatch = async () => {
       return
     }
 
-    const latestPlan = planRes.data.find((p: any) => p.status === 'READY')
+    // Explicitly sort by ID desc to get absolutely latest
+    const sortedPlans = planRes.data.sort((a: any, b: any) => b.id - a.id)
+    const latestPlan = sortedPlans.find((p: any) => p.status === 'READY')
+    
     if (!latestPlan || !latestPlan.routes || latestPlan.routes.length === 0) {
       ElMessage.warning('最新计划没有路线数据')
       return
@@ -87,21 +90,6 @@ const loadLatestDispatch = async () => {
     console.error(e)
     ElMessage.error('加载调度计划失败')
   }
-}
-
-const initializeSimulation = () => {
-  courierStatus.value = routes.value.map((route, idx) => ({
-    id: route.courier_id || idx,
-    name: route.courier?.name || `快递员${idx + 1}`,
-    color: route.geo_json?.color || colors[idx % colors.length],
-    total: route.geo_json?.package_count || 0,
-    delivered: 0,
-    currentPos: [...stationCoord],
-    route: route
-  }))
-
-  drawRoutesAndPackages()
-  drawCouriers()
 }
 
 const drawRoutesAndPackages = () => {
@@ -123,30 +111,107 @@ const drawRoutesAndPackages = () => {
     }
 
     if (route.geo_json?.coordinates && route.geo_json.coordinates.length > 2) {
+      // The coordinates array is [Depot, Pkg1, Pkg2, ..., Depot]
+      // packages_ordered index i matches coordinates index i+1
+      const pkgs = route.geo_json.packages_ordered || []
+      
       route.geo_json.coordinates.slice(1, -1).forEach((coord: any, pkgIdx: number) => {
         const icon = L.divIcon({
           html: `<div style="background:${color};color:white;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">${pkgIdx + 1}</div>`,
           iconSize: [24, 24]
         })
-        L.marker([coord[1], coord[0]], { icon }).addTo(map)
+        const marker = L.marker([coord[1], coord[0]], { icon }).addTo(map)
+        
+        // Add detailed popup if data available
+        if (pkgs[pkgIdx]) {
+           const p = pkgs[pkgIdx]
+           marker.bindPopup(`
+             <div style="font-size:13px;">
+               <b>${pkgIdx + 1}. ${p.recipient_name || '收件人'}</b><br>
+               <span style="color:#666">单号: ${p.tracking_number || '-'}</span><br>
+               <span style="color:#666">重量: ${p.weight || 1}kg</span><br>
+               <span style="color:#666">${p.address || ''}</span>
+             </div>
+           `)
+        }
       })
     }
   })
 }
 
 const drawCouriers = () => {
-  courierMarkers.value.forEach(m => map.removeLayer(m))
-  courierMarkers.value = []
+  // Initialize markers if not present
+  if (courierMarkers.length === 0) {
+     courierStatus.value.forEach(courier => {
+        const icon = L.divIcon({
+          className: 'custom-courier-icon',
+          html: `
+            <div class="courier-marker-inner" style="background-color: ${courier.color}">
+              <span class="icon">🚚</span>
+              <span class="name">${courier.name}</span>
+            </div>
+          `,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0]
+        })
+        const marker = L.marker(courier.currentPos, { icon }).addTo(map)
+        courierMarkers.push(marker)
+     })
+  }
 
-  courierStatus.value.forEach(courier => {
-    const icon = L.divIcon({
-      html: `<div style="background:${courier.color};color:white;padding:4px 8px;border-radius:12px;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.4);font-size:12px;font-weight:bold;white-space:nowrap;">🚚 ${courier.name}</div>`,
-      className: 'courier-marker',
-      iconAnchor: [40, 15]
-    })
-    const marker = L.marker(courier.currentPos, { icon }).addTo(map)
-    courierMarkers.value.push(marker)
+  // Update positions and popups for all markers
+  courierStatus.value.forEach((courier, idx) => {
+    const marker = courierMarkers[idx]
+    if (!marker) return
+
+    // Update position smoothly
+    marker.setLatLng(courier.currentPos)
+
+    // Calculate dynamic info
+    let currentWeight = 0
+    if (courier.route.geo_json?.packages_ordered) {
+         const allPkgs = courier.route.geo_json.packages_ordered
+         const deliveredCount = courier.delivered
+         for (let i = deliveredCount; i < allPkgs.length; i++) {
+             currentWeight += (allPkgs[i].weight || 0)
+         }
+    } else {
+        currentWeight = (courier.total - courier.delivered) * 1.5
+    }
+
+    // Update popup content (keeps it open if already open)
+    const popupContent = `
+        <div style="text-align:center;">
+            <b>${courier.name}</b><br>
+            <span style="color:#667eea;font-weight:bold;">当前载重: ${currentWeight.toFixed(1)}kg</span><br>
+            <span style="color:#999;font-size:12px;">最大承载: ${courier.maxCapacity}kg</span><br>
+            <span style="font-size:12px;color:#999">剩余包裹: ${courier.total - courier.delivered}个</span>
+        </div>
+    `
+    
+    // If popup is bound, set content. If not (first time), bind it.
+    if (marker.getPopup()) {
+        marker.setPopupContent(popupContent)
+    } else {
+        marker.bindPopup(popupContent)
+    }
   })
+}
+
+const initializeSimulation = () => {
+  courierStatus.value = routes.value.map((route, idx) => ({
+    id: route.courier_id || idx,
+    name: route.courier?.name || `快递员${idx + 1}`,
+    color: route.geo_json?.color || colors[idx % colors.length],
+    total: route.geo_json?.package_count || 0,
+    delivered: 0,
+    currentPos: [...stationCoord],
+    maxCapacity: route.courier?.max_capacity || 50,
+    route: route
+  }))
+
+  drawRoutesAndPackages()
+  drawCouriers()
 }
 
 const nextStep = () => {
@@ -155,12 +220,21 @@ const nextStep = () => {
   currentStep.value++
 
   courierStatus.value.forEach(courier => {
+    // Check if courier has packages left to deliver
     if (courier.delivered < courier.total) {
       const coords = courier.route.geo_json?.coordinates
+      // Ensure coords exist and index is valid
+      // Valid path: Depot(0) -> Pkg1(1) ... PkgN(N) -> Depot(N+1)
+      // Moving to: delivered + 1
       if (coords && coords.length > courier.delivered + 1) {
         const nextCoord = coords[courier.delivered + 1]
+        // GeoJSON is [lon, lat], Leaflet needs [lat, lon]
         courier.currentPos = [nextCoord[1], nextCoord[0]]
         courier.delivered++
+      } else {
+        console.warn(`Missing coordinates for courier ${courier.name} at step ${courier.delivered}`)
+        // Force increment to avoid stuck loop logic, but position won't update
+        courier.delivered++ 
       }
     }
   })
@@ -194,4 +268,33 @@ const resetSimulation = () => {
 .courier-item { padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 8px; }
 .courier-name { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
 .courier-progress { font-size: 14px; color: #718096; }
+
+:deep(.custom-courier-icon) {
+  background: none;
+  border: none;
+}
+
+:deep(.courier-marker-inner) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-50%, -50%); /* Centers the marker exactly on the coordinate */
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  border: 2px solid white;
+  transition: transform 0.2s; /* Smooth visual effects if needed */
+}
+
+:deep(.courier-marker-inner:hover) {
+  z-index: 1000;
+  transform: translate(-50%, -50%) scale(1.1);
+}
 </style>

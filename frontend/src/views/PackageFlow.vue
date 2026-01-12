@@ -12,7 +12,7 @@
           <el-option label="配送中" value="IN_TRANSIT" />
           <el-option label="已送达" value="DELIVERED" />
         </el-select>
-        <el-button type="primary">📱 扫码入库</el-button>
+        <el-button type="primary" @click="dialogVisible = true">📱 扫码入库</el-button>
       </div>
     </div>
     <el-table :data="filteredPackages" style="margin-top: 20px">
@@ -25,16 +25,93 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <el-dialog v-model="dialogVisible" title="包裹入库" width="40%">
+      <el-form :model="form" label-width="100px">
+        <el-form-item label="快递单号">
+          <el-input v-model="form.tracking_number" placeholder="扫描或输入单号" />
+          <el-button type="text" @click="generateTracking">📦 生成单号</el-button>
+        </el-form-item>
+        <el-form-item label="收件人">
+          <el-input v-model="form.recipient_name" />
+        </el-form-item>
+        <el-form-item label="电话">
+          <el-input v-model="form.recipient_phone" />
+        </el-form-item>
+        <el-form-item label="地址">
+          <el-input v-model="form.recipient_address" />
+        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="重量(kg)">
+              <el-input-number v-model="form.weight" :precision="1" :step="0.1" :min="0.1" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="体积(m³)">
+              <el-input-number v-model="form.volume" :precision="2" :step="0.01" :min="0.01" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleAdd">入库</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 const packages = ref<any[]>([])
 const search = ref('')
 const statusFilter = ref('')
+const dialogVisible = ref(false)
+
+const form = reactive({
+  tracking_number: '',
+  recipient_name: '',
+  recipient_phone: '',
+  recipient_address: '',
+  weight: 1.0,
+  volume: 0.1,
+  latitude: 31.2304, // Default to Shanghai center
+  longitude: 121.4737
+})
+
+const generateTracking = () => {
+  form.tracking_number = 'SF' + Date.now().toString().slice(-10)
+}
+
+const fetchPackages = async () => {
+  try {
+    const res = await axios.get('/api/v1/delivery/packages')
+    packages.value = res.data
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const handleAdd = async () => {
+  try {
+    // Generate random lat/lon slightly around center if not provided (simulation)
+    form.latitude = 31.2304 + (Math.random() - 0.5) * 0.1
+    form.longitude = 121.4737 + (Math.random() - 0.5) * 0.1
+    
+    await axios.post('/api/v1/delivery/packages', form)
+    ElMessage.success('包裹入库成功')
+    dialogVisible.value = false
+    fetchPackages()
+  } catch (e) {
+    ElMessage.error('入库失败')
+  }
+}
 
 const filteredPackages = computed(() => {
   let result = packages.value
@@ -60,13 +137,8 @@ const getStatusLabel = (status: string) => {
   return map[status] || status
 }
 
-onMounted(async () => {
-  try {
-    const res = await axios.get('/api/v1/delivery/packages')
-    packages.value = res.data
-  } catch (e) {
-    console.error(e)
-  }
+onMounted(() => {
+  fetchPackages()
 })
 </script>
 

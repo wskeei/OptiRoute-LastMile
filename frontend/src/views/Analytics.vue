@@ -21,6 +21,14 @@
         </div>
       </div>
       <div class="kpi-card glass-card">
+        <div class="kpi-icon">⚖️</div>
+        <div class="kpi-content">
+          <div class="kpi-label">累计配送重量</div>
+          <div class="kpi-value">{{ stats.totalWeight }}</div>
+          <div class="kpi-unit">kg</div>
+        </div>
+      </div>
+      <div class="kpi-card glass-card">
         <div class="kpi-icon">🚚</div>
         <div class="kpi-content">
           <div class="kpi-label">在职快递员</div>
@@ -58,7 +66,7 @@
         <div ref="trendChartRef" style="height: 320px"></div>
       </div>
       <div class="chart-card glass-card">
-        <h3>🚚 快递员工作量排行</h3>
+        <h3>🚚 快递员工作量排行 (最新调度)</h3>
         <div ref="courierChartRef" style="height: 320px"></div>
       </div>
     </div>
@@ -111,7 +119,8 @@ const stats = ref({
   totalSavedDistance: 0,
   avgDistancePerPackage: '0.00',
   savedRate: 0,
-  savedCost: 0
+  savedCost: 0,
+  totalWeight: 0
 })
 
 const trendChartRef = ref()
@@ -121,34 +130,87 @@ const courierStatusChartRef = ref()
 
 const loadData = async () => {
   try {
-    const [plansRes, packagesRes, couriersRes] = await Promise.all([
+    const [plansRes, packagesRes, couriersRes, rankRes] = await Promise.all([
       axios.get('/api/v1/dispatch/plans'),
       axios.get('/api/v1/delivery/packages'),
-      axios.get('/api/v1/delivery/couriers')
+      axios.get('/api/v1/delivery/couriers'),
+      axios.get('/api/v1/stats/courier-ranking')
     ])
 
     const plans = plansRes.data.filter((p: any) => (p.status === 'READY' || p.status === 'COMPLETED') && p.routes?.length > 0)
     const packages = packagesRes.data
     const couriers = couriersRes.data
+    const ranking = rankRes.data
 
+    // Restore stats calculation
     stats.value.totalPackages = packages.length
     stats.value.pendingPackages = packages.filter((p: any) => p.status === 'PENDING').length
     stats.value.totalCouriers = couriers.length
     stats.value.totalPlans = plans.length
 
-    const totalDeliveredPackages = plans.reduce((sum: number, p: any) =>
-      sum + (p.routes?.reduce((s: number, r: any) => s + (r.geo_json?.package_count || 0), 0) || 0), 0)
-    stats.value.avgEfficiency = couriers.length > 0 ? Math.round(totalDeliveredPackages / couriers.length) : 0
+    // Calculate total weight
+    const allWeight = packages.reduce((sum: number, p: any) => sum + (p.weight || 0), 0)
+    stats.value.totalWeight = parseFloat(allWeight.toFixed(1))
 
-    const totalDistance = plans.reduce((sum: number, p: any) =>
-      sum + (p.routes?.reduce((s: number, r: any) => s + (r.geo_json?.total_distance_km || 0), 0) || 0), 0)
-    stats.value.totalSavedDistance = totalDistance.toFixed(1)
-    stats.value.avgDistancePerPackage = totalDeliveredPackages > 0 ? (totalDistance / totalDeliveredPackages).toFixed(2) : '0.00'
-    stats.value.savedRate = 25
-    stats.value.savedCost = Math.round(totalDistance * 6 * 0.25)
+    // Calculate total optimized distance from plans
+    let totalOptimizedDist = 0
+    plans.forEach((p: any) => {
+        p.routes?.forEach((r: any) => {
+             totalOptimizedDist += (r.geo_json?.total_distance_km || 0)
+        })
+    })
+
+    // Fake savings logic for demo (assuming 20% improvement over naive)
+    const estimatedOriginalDist = totalOptimizedDist * 1.25
+    const savedDist = estimatedOriginalDist - totalOptimizedDist
+    
+    stats.value.totalSavedDistance = parseFloat(savedDist.toFixed(1))
+    // Calculate efficiency based on the LATEST PLAN (to be dynamic)
+    // Efficiency = Packages Delivered / Active Couriers in that plan
+    if (plans.length > 0) {
+        const latest = plans[0] // Sorted by desc in backend? default is asc/desc?
+        // Backend list_dispatch_plans is order_by(created_at.desc())
+        
+        const latestPkgCount = latest.routes?.reduce((sum: number, r: any) => sum + (r.geo_json?.package_count || 0), 0) || 0
+        const uniqueCouriers = new Set(latest.routes?.map((r: any) => r.courier_id).filter(Boolean)).size
+        
+        stats.value.avgEfficiency = uniqueCouriers > 0 ? parseFloat((latestPkgCount / uniqueCouriers).toFixed(1)) : 0
+    } else {
+        // Fallback to active/pending ratio
+        const activeCouriers = couriers.filter((c: any) => c.status === 'AVAILABLE' || c.status === 'BUSY').length
+        const activePackages = packages.filter((p: any) => p.status === 'PENDING' || p.status === 'ASSIGNED' || p.status === 'IN_TRANSIT').length
+        stats.value.avgEfficiency = activeCouriers > 0 ? parseFloat((activePackages / activeCouriers).toFixed(1)) : 0
+    }
+
+    stats.value.totalSavedDistance = parseFloat(savedDist.toFixed(1))
+    stats.value.avgDistancePerPackage = packages.length > 0 ? (totalOptimizedDist / packages.length).toFixed(2) : '0.00'
+    stats.value.savedRate = 20
+    stats.value.savedCost = parseFloat((savedDist * 6).toFixed(0))
+
+    // Calculate ranking from latest plan
+    let currentRanking: any[] = []
+    if (plans.length > 0) {
+      const latestPlan = plans[0] // Backend returns desc order
+      const courierMap = new Map<number, number>()
+      
+      latestPlan.routes?.forEach((r: any) => {
+        if (r.courier_id) {
+          const count = r.geo_json?.package_count || 0
+          courierMap.set(r.courier_id, (courierMap.get(r.courier_id) || 0) + count)
+        }
+      })
+
+      currentRanking = Array.from(courierMap.entries()).map(([cid, count]) => {
+        const c = couriers.find((i: any) => i.id === cid)
+        return {
+          name: c ? c.name : `快递员${cid}`,
+          delivered_count: count
+        }
+      }).sort((a, b) => b.delivered_count - a.delivered_count)
+    }
 
     initTrendChart(plans)
-    initCourierChart(couriers)
+    initCourierChart(currentRanking)
     initPackageStatusChart(packages)
     initCourierStatusChart(couriers)
   } catch (e) {
@@ -183,12 +245,13 @@ const initTrendChart = (plans: any[]) => {
   })
 }
 
-const initCourierChart = (couriers: any[]) => {
+const initCourierChart = (ranking: any[]) => {
   if (!courierChartRef.value) return
   const chart = echarts.init(courierChartRef.value)
 
-  const courierNames = couriers.slice(0, 10).map(c => c.name)
-  const workloads = couriers.slice(0, 10).map(() => Math.floor(Math.random() * 50) + 10)
+  const topCouriers = ranking.slice(0, 10)
+  const courierNames = topCouriers.map(c => c.name)
+  const workloads = topCouriers.map(c => c.delivered_count)
 
   chart.setOption({
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },

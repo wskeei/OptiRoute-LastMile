@@ -40,6 +40,10 @@
               <span class="label">平均距离</span>
               <span class="value">{{ calculateAvgDistance(plan.routes) }}km</span>
             </div>
+            <div class="mini-metric">
+              <span class="label">总重量</span>
+              <span class="value">{{ calculateTotalWeight(plan.routes) }}kg</span>
+            </div>
           </div>
           <div class="plan-params">
             <el-tag size="small">K={{ plan.algorithm_meta?.k || 'N/A' }}</el-tag>
@@ -121,19 +125,29 @@ const initTrendChart = () => {
   const avgDistances = plans.value.map(p => parseFloat(calculateAvgDistance(p.routes)))
   const packages = plans.value.map(p => calculateTotalPackages(p.routes))
 
+  const weights = plans.value.map(p => parseFloat(calculateTotalWeight(p.routes)))
+
   chart.setOption({
     tooltip: { trigger: 'axis' },
-    legend: { data: ['总距离', '平均距离', '包裹数'], top: 0 },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '15%', containLabel: true },
+    legend: { data: ['总距离', '平均距离', '包裹数', '总重量'], top: 0 },
+    grid: { left: '3%', right: '15%', bottom: '3%', top: '15%', containLabel: true },
     xAxis: { type: 'category', data: dates },
     yAxis: [
-      { type: 'value', name: '距离(km)' },
-      { type: 'value', name: '包裹数' }
+      { type: 'value', name: '距离(km)', position: 'left' },
+      { type: 'value', name: '包裹数', position: 'right' },
+      { 
+        type: 'value', 
+        name: '重量(kg)', 
+        position: 'right', 
+        offset: 50,
+        axisLine: { show: true, lineStyle: { color: '#9f7aea' } }
+      }
     ],
     series: [
       { name: '总距离', type: 'line', data: distances, smooth: true, itemStyle: { color: '#667eea' } },
       { name: '平均距离', type: 'line', data: avgDistances, smooth: true, itemStyle: { color: '#48bb78' } },
-      { name: '包裹数', type: 'bar', yAxisIndex: 1, data: packages, itemStyle: { color: '#ed8936' } }
+      { name: '包裹数', type: 'bar', yAxisIndex: 1, data: packages, itemStyle: { color: '#ed8936' } },
+      { name: '总重量', type: 'line', yAxisIndex: 2, data: weights, smooth: true, itemStyle: { color: '#9f7aea' } }
     ]
   })
 }
@@ -178,6 +192,7 @@ const comparisonData = computed(() => {
 
   const metrics = [
     { metric: '总包裹数', values: selectedPlanData.map(p => calculateTotalPackages(p.routes)), lower: false },
+    { metric: '总重量(kg)', values: selectedPlanData.map(p => calculateTotalWeight(p.routes)), lower: false },
     { metric: '路线数', values: selectedPlanData.map(p => p.routes?.length || 0), lower: false },
     { metric: '总距离(km)', values: selectedPlanData.map(p => calculateTotalDistance(p.routes)), lower: true },
     { metric: '平均距离(km)', values: selectedPlanData.map(p => calculateAvgDistance(p.routes)), lower: true },
@@ -201,6 +216,17 @@ const selectPlan = (plan: any) => {
 const formatDate = (date: string) => new Date(date).toLocaleString('zh-CN')
 const calculateTotalDistance = (routes: any[]) => routes?.reduce((sum, r) => sum + (r.geo_json?.total_distance_km || 0), 0).toFixed(1) || '0.0'
 const calculateTotalPackages = (routes: any[]) => routes?.reduce((sum, r) => sum + (r.geo_json?.package_count || 0), 0) || 0
+const calculateTotalWeight = (routes: any[]) => {
+  return routes?.reduce((sum, r) => {
+    // Prefer snapshot in geo_json if available (for history)
+    if (r.geo_json?.total_weight !== undefined) {
+      return sum + r.geo_json.total_weight
+    }
+    // Fallback for current/active plan if check geo_json update lags
+    const routeWeight = r.packages?.reduce((w: number, p: any) => w + (p.weight || 0), 0) || 0
+    return sum + routeWeight
+  }, 0).toFixed(1) || '0.0'
+}
 const calculateAvgDistance = (routes: any[]) => {
   const total = parseFloat(calculateTotalDistance(routes))
   const packages = calculateTotalPackages(routes)
