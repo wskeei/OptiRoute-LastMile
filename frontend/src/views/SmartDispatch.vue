@@ -138,7 +138,11 @@ const initMap = () => {
 }
 
 const startOptimization = async () => {
-  if (isOptimizing.value || !stationId.value) return
+  if (isOptimizing.value || !stationId.value) {
+    ElMessage.warning('请等待当前调度完成')
+    return
+  }
+
   isOptimizing.value = true
   optimizationComplete.value = false
   activeStep.value = 1
@@ -151,18 +155,23 @@ const startOptimization = async () => {
   clusterPolygons.length = 0
 
   try {
+    ElMessage.info('正在创建调度计划...')
     const res = await axios.post('/api/v1/dispatch/plans', {
-      title: `Dispatch Plan ${new Date().toLocaleTimeString()}`,
+      title: `调度计划 ${new Date().toLocaleString('zh-CN')}`,
       station_id: stationId.value,
       algorithm_meta: config
     })
 
     currentPlanId.value = res.data.id
     activeStep.value = 2
+    ElMessage.success('调度计划已创建，正在计算最优路线...')
     pollStatus()
-  } catch (error) {
-    ElMessage.error('调度请求失败')
+  } catch (error: any) {
+    console.error('Dispatch error:', error)
+    const msg = error.response?.data?.detail || '调度请求失败，请检查是否有待配送包裹'
+    ElMessage.error(msg)
     isOptimizing.value = false
+    activeStep.value = 0
   }
 }
 
