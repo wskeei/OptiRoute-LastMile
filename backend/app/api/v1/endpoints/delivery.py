@@ -48,8 +48,8 @@ def create_package(package: schemas.PackageCreate, db: Session = Depends(get_db)
 @router.get("/packages", response_model=List[schemas.Package])
 def read_packages(
     status: models.PackageStatus = Query(None),
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 500,
     db: Session = Depends(get_db)
 ):
     query = db.query(models.Package)
