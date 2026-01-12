@@ -1,0 +1,105 @@
+/* Global Reset & Variables */
+:root {
+  /* 品牌色 - 科技蓝紫渐变 */
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-color: #667eea;
+  --secondary-color: #764ba2;
+  --accent-color: #00f260;
+
+  /* 玻璃拟态核心变量 */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  --glass-blur: blur(12px);
+
+  /* 布局尺寸 */
+  --sidebar-width: 260px;
+  --header-height: 70px;
+  --border-radius-lg: 24px;
+  --border-radius-md: 16px;
+
+  /* 文字颜色 */
+  --text-main: #2c3e50;
+  --text-secondary: #5f6c7b;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--text-main);
+  /* 全局动态背景 */
+  background: linear-gradient(120deg, #e0c3fc 0%, #8ec5fc 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+}
+
+/* 覆盖 Element Plus 默认样式，实现全局玻璃化 */
+.el-container, .el-main, .el-header, .el-aside {
+  background: transparent !important;
+}
+
+/* 玻璃卡片通用类 */
+.glass-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: var(--glass-shadow) !important;
+  border-radius: var(--border-radius-lg) !important;
+}
+
+/* 覆盖 Element Card */
+.el-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--border-radius-md) !important;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05) !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.el-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 按钮样式升级 */
+.el-button--primary {
+  background: var(--primary-gradient) !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4);
+  transition: all 0.3s ease;
+}
+
+.el-button--primary:hover {
+  filter: brightness(1.1);
+  transform: scale(1.05);
+}
+
+/* 表格透明化 */
+.el-table, .el-table__expanded-cell, .el-table th.el-table__cell, .el-table tr {
+  background-color: transparent !important;
+}
+.el-table td.el-table__cell, .el-table th.el-table__cell.is-leaf {
+  border-bottom: 1px solid rgba(0,0,0,0.05) !important;
+}
+.el-table--enable-row-hover .el-table__body tr:hover > td.el-table__cell {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
