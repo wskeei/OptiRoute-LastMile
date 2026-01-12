@@ -24,17 +24,40 @@ def get_dashboard_stats(db: Session = Depends(get_db)):
 
 @router.get("/courier-ranking")
 def get_courier_ranking(db: Session = Depends(get_db)):
-    """返回快递员排行榜"""
-    couriers = db.query(
-        models.Courier.id,
-        models.Courier.name,
-        func.count(models.Package.id).label('delivered_count')
-    ).join(
-        models.DeliveryRoute, models.Courier.id == models.DeliveryRoute.courier_id, isouter=True
-    ).join(
-        models.Package, models.DeliveryRoute.id == models.Package.route_id, isouter=True
-    ).filter(
-        models.Package.status == models.PackageStatus.DELIVERED
-    ).group_by(models.Courier.id).order_by(func.count(models.Package.id).desc()).limit(10).all()
+    """返回快递员排行榜（基于历史累计分配包裹数）"""
+    # 获取所有非空闲且已完成或就绪的计划中的路线，或者所有路线更简单（历史记录）
+    routes = db.query(models.DeliveryRoute).filter(
+        models.DeliveryRoute.courier_id.isnot(None)
+    ).all()
 
-    return [{"id": c.id, "name": c.name, "delivered_count": c.delivered_count} for c in couriers]
+    courier_stats = {}
+    
+    for route in routes:
+        cid = route.courier_id
+        # 从 geo_json 中获取当时分配的包裹数
+        # 如果是旧数据没有 geo_json，尝试用 packages 关联（但可能已断开）
+        # 我们主要依赖 geo_json
+        count = 0
+        if route.geo_json and 'package_count' in route.geo_json:
+            count = route.geo_json['package_count']
+        
+        if cid not in courier_stats:
+            courier_stats[cid] = 0
+        courier_stats[cid] += count
+
+    # 获取快递员名称
+    courier_ids = list(courier_stats.keys())
+    couriers = db.query(models.Courier).filter(models.Courier.id.in_(courier_ids)).all()
+    courier_map = {c.id: c.name for c in couriers}
+
+    ranking = []
+    for cid, count in courier_stats.items():
+        ranking.append({
+            "id": cid,
+            "name": courier_map.get(cid, f"快递员{cid}"),
+            "delivered_count": count
+        })
+
+    # 排序并取前10
+    ranking.sort(key=lambda x: x["delivered_count"], reverse=True)
+    return ranking[:10]
