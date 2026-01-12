@@ -1,0 +1,36 @@
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Python Backend
+backend/__pycache__/
+backend/**/*.pyc
+backend/.venv/
+backend/env/
+backend/venv/
+backend/*.db
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/dist/
+backend/build/
+backend/*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-error.log*
+frontend/yarn.lock
+frontend/package-lock.json
+# Editor directories and files
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
