@@ -1,17 +1,29 @@
-# AI-Powered Last-Mile Delivery Optimization System
+# SmartDispatch-AI: Intelligent Last-Mile Delivery System
+> *AI-Driven Logistics Optimization with Real-World Constraints*
 
-This project is a full-stack application designed to optimize last-mile delivery routes for courier services. It uses a combination of K-Means clustering to partition delivery zones and a Genetic Algorithm (GA) to solve the Traveling Salesperson Problem (TSP) for each zone, minimizing total delivery distance and time.
+**SmartDispatch-AI** is a comprehensive full-stack solution designed to tackle the "Last Mile" delivery challenge. By synergizing **K-Means Clustering** for region partitioning and **Genetic Algorithms (GA)** for route optimization, it generates highly efficient delivery plans that respect potential real-world constraints like courier capacity.
 
-The system is composed of a Python FastAPI backend that handles the core algorithmic logic and a Vue.js frontend that provides a modern, interactive dashboard for managing and visualizing the entire dispatch process.
+The system features a **FastAPI** backend for high-performance computing and a **Vue 3** frontend for an immersive, data-rich user experience.
 
-![System Screenshot](https://i.imgur.com/your-screenshot.png) <!-- It's recommended to add a screenshot of the running application -->
+![System Screenshot](https://i.imgur.com/your-screenshot.png)
 
-## 🚀 Features
+## 🚀 Key Features
 
-- **AI-Powered Dispatch**: Automatically groups packages into clusters and calculates the optimal delivery route for each courier.
-- **Interactive Map Dashboard**: Visualize package locations, courier assignments, and optimized routes on a Leaflet map.
-- **Real-time Progress**: Monitor the status of the optimization algorithm from data processing to final results.
-- **Full-Stack Management**:
+### 🧠 Intelligent Core
+- **Hybrid Algorithm Engine**: Combines **Constrained K-Means** (balanced clustering) with **Genetic Algorithms** (TSP solver) to minimize total travel distance and cost.
+- **Dynamic Capacity Management**: Automatically adjusts courier loads based on real-time package volume and individual weight/volume constraints (e.g., max 150kg).
+- **Real-World Data Simulation**: Integrated with real geographic data from **Shanghai**, generating realistic package addresses and coordinates for testing.
+
+### 🖥️ Interactive Visualization
+- **Realtime Monitor**: Watch couriers move along their optimized paths in real-time, with dynamic load tracking and interactive popups.
+- **Smart Dispatch Center**: Visual progress of the algorithm evolution, showing how routes improve generation by generation.
+- **Ant-Path Animation**: Animated path visualizations on Leaflet maps to clearly indicate delivery direction and flow.
+
+### 📊 Comprehensive Management
+- **One-Click Dispatch**: Trigger complex optimization tasks with a single button.
+- **Data Analytics**: Insightful dashboards showing courier ranking, efficiency trends, and cost-saving metrics.
+- **Lifecycle Tracking**: Full management of package states from `PENDING` -> `ASSIGNED` -> `IN_TRANSIT` -> `DELIVERED`.
+- **System Control**: Reset demo data or clear history instantly via system settings.
     - **Dashboard**: Get a quick overview of daily stats, efficiency trends, and courier performance.
     - **Package Management**: Track packages through their entire lifecycle (pending, in-transit, delivered).
     - **Courier Workbench**: Monitor courier status, workload, and performance analytics.
