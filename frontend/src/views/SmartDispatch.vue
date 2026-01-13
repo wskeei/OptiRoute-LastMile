@@ -3,7 +3,7 @@
     <div class="dispatch-header glass-card">
       <h2>🤖 AI智能调度中心</h2>
       <div class="header-actions">
-        <el-button type="warning" size="large" @click="resetDemo" :disabled="loading">🔄 重置演示数据</el-button>
+        <el-button type="warning" size="large" @click="resetDemo" :loading="resetting" :disabled="loading">🔄 重置演示数据</el-button>
         <el-button type="primary" size="large" :loading="loading" @click="startDispatch">
           🚀 开始AI调度
         </el-button>
@@ -311,9 +311,14 @@ const drawRoutes = (routes: any[]) => {
   }
 }
 
+const resetting = ref(false)
+
 const resetDemo = async () => {
+  resetting.value = true
   try {
+    console.log('Sending reset-demo request...')
     await axios.post('/api/v1/dispatch/reset-demo')
+    console.log('Reset demo success')
     ElMessage.success('演示数据已重置，可以重新调度')
     result.value = null
     step.value = 0
@@ -340,7 +345,10 @@ const resetDemo = async () => {
 
     drawPackageMarkers()
   } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '重置失败')
+    console.error('Reset failed:', e)
+    ElMessage.error(e.response?.data?.detail || '重置失败: ' + (e.message || '未知错误'))
+  } finally {
+    resetting.value = false
   }
 }
 </script>
