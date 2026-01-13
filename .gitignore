@@ -11,6 +11,8 @@ backend/.venv/
 backend/env/
 backend/venv/
 backend/*.db
+backend/*.db-shm
+backend/*.db-wal
 backend/.pytest_cache/
 backend/.coverage
 backend/htmlcov/
@@ -34,6 +36,11 @@ frontend/package-lock.json
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code
+.claude/
+tmpclaude-*
+**/tmpclaude-*
 
 # Project documentation (local only)
 claude.md
