@@ -70,13 +70,13 @@ cd backend
 # 安装依赖（自动创建虚拟环境）
 uv sync
 
-加速：
-uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+# 国内加速：
+# uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 应用数据库迁移
 uv run alembic upgrade head
 
-# 使用测试数据填充数据库
+# 初始化数据库（配送站、快递员、包裹数据）
 uv run python seed_shanghai_data.py
 ```
 
@@ -95,9 +95,14 @@ npm install
 1.  **启动后端服务器**：
     ```bash
     cd backend
-    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ```
     API 将在 `http://localhost:8000` 上可用。
+
+    > **注意**：在 Windows 上，如果服务器因 SQLite 文件变化而不断重启，请使用：
+    > ```bash
+    > uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+    > ```
 
 2.  **启动前端服务器**：
     ```bash
@@ -106,9 +111,10 @@ npm install
     ```
     应用程序将在 `http://localhost:5173` 上可访问。
 
-3.  **使用说明**：
-    - 导航至 **AI调度中心** (AI Dispatch Center)
-    - 点击 **"🚀 开始AI调度"** 以开始智能调度
+3.  **首次使用**：
+    - 导航至 **AI调度中心**
+    - 点击 **"🔄 重置演示数据"** 初始化随机包裹和快递员
+    - 点击 **"🚀 开始AI调度"** 运行优化算法
     - 观看算法进行 K-Means 聚类和遗传算法优化的进度
     - 查看地图上带有动画路径的优化路线
 

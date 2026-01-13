@@ -73,7 +73,7 @@ uv sync
 # Apply database migrations
 uv run alembic upgrade head
 
-# [Optional] Seed the database with test data
+# Initialize database with required data (stations, couriers, packages)
 uv run python seed_shanghai_data.py
 ```
 
@@ -92,9 +92,14 @@ npm install
 1.  **Start the Backend Server**:
     ```bash
     cd backend
-    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ```
     The API will be available at `http://localhost:8000`.
+
+    > **Note**: On Windows, if the server keeps restarting due to SQLite file changes, use:
+    > ```bash
+    > uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+    > ```
 
 2.  **Start the Frontend Server**:
     ```bash
@@ -103,9 +108,10 @@ npm install
     ```
     The application will be accessible at `http://localhost:5173`.
 
-3.  **Usage**:
+3.  **First-Time Usage**:
     - Navigate to **AI调度中心** (AI Dispatch Center)
-    - Click **"🚀 开始AI调度"** to start the intelligent dispatch
+    - Click **"🔄 重置演示数据"** (Reset Demo Data) to initialize random packages and couriers
+    - Click **"🚀 开始AI调度"** (Start AI Dispatch) to run the optimization
     - Watch the algorithm progress through K-Means clustering and genetic algorithm optimization
     - View the optimized routes visualized on the map with animated paths
 
