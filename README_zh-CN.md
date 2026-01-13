@@ -126,5 +126,37 @@ npm install
 - **动画路径可视化**：显示配送方向的蚂蚁路径动画
 - **实时数据**：来自后端 API 的实时更新
 
+## 🔧 故障排除
+
+### 数据库错误 (500 Internal Server Error)
+
+如果遇到 `no such column` 或 `no such table` 等数据库错误：
+
+**解决方案** - 重置数据库：
+
+```bash
+cd backend
+
+# 删除旧数据库
+rm sql_app.db
+
+# 重新创建正确的数据库结构
+uv run alembic upgrade head
+
+# 重新初始化数据
+uv run python seed_shanghai_data.py
+
+# 重启后端
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+### Windows 上后端不断重启
+
+如果后端服务器因 SQLite 文件变化而不断重启：
+
+```bash
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+```
+
 ---
 *本项目是在 Claude Sonnet 4.5 的协助下开发的。*

@@ -123,5 +123,37 @@ npm install
 - **Animated Route Visualization**: Ant-path animations showing delivery direction
 - **Real-time Data**: Live updates from backend APIs
 
+## 🔧 Troubleshooting
+
+### Database Schema Errors (500 Internal Server Error)
+
+If you encounter database errors like `no such column` or `no such table`:
+
+**Solution** - Reset the database:
+
+```bash
+cd backend
+
+# Remove old database
+rm sql_app.db
+
+# Re-create database with correct schema
+uv run alembic upgrade head
+
+# Re-seed initial data
+uv run python seed_shanghai_data.py
+
+# Restart the backend
+uv run uvicorn app.main:app --reload --port 8000
+```
+
+### Backend Keeps Restarting on Windows
+
+If the backend server keeps restarting due to SQLite file changes:
+
+```bash
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
+```
+
 ---
 *This project was developed with assistance from Claude Sonnet 4.5.*
