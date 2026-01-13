@@ -1,4 +1,6 @@
 # SmartDispatch-AI: Intelligent Last-Mile Delivery System
+
+[[中文文档](README_zh-CN.md)]
 > *AI-Driven Logistics Optimization with Real-World Constraints*
 
 **SmartDispatch-AI** is a comprehensive full-stack solution designed to tackle the "Last Mile" delivery challenge. By synergizing **K-Means Clustering** for region partitioning and **Genetic Algorithms (GA)** for route optimization, it generates highly efficient delivery plans that respect potential real-world constraints like courier capacity.
@@ -90,7 +92,7 @@ npm install
 1.  **Start the Backend Server**:
     ```bash
     cd backend
-    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
     ```
     The API will be available at `http://localhost:8000`.
 
