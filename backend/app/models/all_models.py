@@ -62,6 +62,7 @@ class Courier(Base):
     station_id = Column(Integer, ForeignKey("stations.id"))
     status = Column(Enum(CourierStatus), default=CourierStatus.OFF_DUTY)
     max_capacity = Column(Float, default=50.0) # 最大载货量
+    current_load = Column(Float, default=0.0)  # 当前载货量
     
     station = relationship("DeliveryStation", back_populates="couriers")
     routes = relationship("DeliveryRoute", back_populates="courier")

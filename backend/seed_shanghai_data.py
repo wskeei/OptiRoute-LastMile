@@ -1,9 +1,9 @@
 """
-生成100个真实上海地点数据用于测试
+生成上海测试数据：配送站、快递员、包裹
 """
 import random
 from app.db.session import SessionLocal
-from app.models.all_models import Package, PackageStatus
+from app.models.all_models import Package, PackageStatus, DeliveryStation, Courier, CourierStatus
 
 # 100个真实上海地点（小区、商场、写字楼）
 SHANGHAI_LOCATIONS = [
@@ -68,6 +68,48 @@ GIVEN_NAMES = ["伟", "芳", "娜", "敏", "静", "丽", "强", "磊", "军", "�
 def generate_phone():
     return f"1{random.choice([3,5,7,8,9])}{random.randint(100000000, 999999999)}"
 
+def seed_stations_and_couriers():
+    """创建配送站和快递员数据"""
+    db = SessionLocal()
+    try:
+        # 清除现有数据
+        db.query(Courier).delete()
+        db.query(DeliveryStation).delete()
+        db.commit()
+
+        # 创建主配送站 - 上海人民广场
+        main_station = DeliveryStation(
+            id=1,
+            name="上海人民广场配送站",
+            address="上海市黄浦区人民广场",
+            latitude=31.2304,
+            longitude=121.4737
+        )
+        db.add(main_station)
+        db.commit()
+
+        # 创建10个快递员
+        courier_names = ["张伟", "李强", "王军", "刘洋", "陈勇", "杨磊", "黄超", "赵杰", "周明", "吴涛"]
+        for i, name in enumerate(courier_names, 1):
+            courier = Courier(
+                id=i,
+                name=name,
+                phone=generate_phone(),
+                station_id=1,
+                status=CourierStatus.AVAILABLE,
+                max_capacity=round(random.uniform(80.0, 150.0), 1)
+            )
+            db.add(courier)
+
+        db.commit()
+        print(f"[OK] Created 1 station and {len(courier_names)} couriers")
+
+    except Exception as e:
+        print(f"[ERROR] Create station/courier failed: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
 def seed_shanghai_packages():
     db = SessionLocal()
     try:
@@ -93,12 +135,15 @@ def seed_shanghai_packages():
                 package_count += 1
 
         db.commit()
-        print(f"✅ 成功生成 {package_count} 个上海地点包裹数据")
+        print(f"[OK] Created {package_count} packages")
     except Exception as e:
-        print(f"❌ 错误: {e}")
+        print(f"[ERROR] Create packages failed: {e}")
         db.rollback()
     finally:
         db.close()
 
 if __name__ == "__main__":
+    print("开始初始化数据库...")
+    seed_stations_and_couriers()
     seed_shanghai_packages()
+    print("数据库初始化完成！")
