@@ -3,10 +3,8 @@
     <section class="page-hero">
       <div>
         <span class="eyebrow">运营分析</span>
-        <h1>先看事实统计，再看演示估算。</h1>
-        <p class="page-summary">
-          所有来源不明的“优化收益”都会被单独标记为估算，避免和真实结果混在一起。
-        </p>
+        <h1>区分实测与估算。</h1>
+        <p class="page-summary">先看接口返回的实际数据，再看演示推导。</p>
       </div>
       <el-button @click="loadData">刷新数据</el-button>
     </section>
@@ -24,8 +22,8 @@
     <section class="section-card">
       <header class="section-head">
         <div>
-          <h2>实际统计</h2>
-          <p>这些数字来自包裹、快递员和已完成调度计划的实际接口数据。</p>
+          <h2>实际数据</h2>
+          <p>包裹、快递员和已完成计划的接口结果。</p>
         </div>
       </header>
 
@@ -33,23 +31,23 @@
         <article class="kpi-card" v-for="item in factualKpis" :key="item.label">
           <span class="kpi-label">{{ item.label }}</span>
           <strong class="kpi-value">{{ item.value }}</strong>
-          <span class="kpi-caption">{{ item.caption }}</span>
+          <span v-if="item.caption" class="kpi-caption">{{ item.caption }}</span>
         </article>
       </div>
     </section>
-
-    <el-alert type="warning" :closable="false" show-icon>
-      <template #title>以下收益数字仅用于演示说明</template>
-      预估基线距离按“当前路线距离提升 20%”反推，成本按每公里 6 元换算，不代表系统实测收益。
-    </el-alert>
 
     <section class="section-card">
       <header class="section-head">
         <div>
           <h2>演示估算</h2>
-          <p>这些值用于帮助理解优化概念，不应被当作真实业务产出。</p>
+          <p>帮助理解优化幅度，不代表实测产出。</p>
         </div>
       </header>
+
+      <div class="estimate-meta">
+        <span class="estimate-chip">演示估算</span>
+        <p>基线距离按当前路线上浮 20%，成本按每公里 6 元换算。</p>
+      </div>
 
       <div class="estimate-grid">
         <article class="estimate-card">
@@ -86,7 +84,7 @@
         <header class="section-head">
           <div>
             <h2>最近调度趋势</h2>
-            <p>最近 10 次实际调度的路线距离与包裹数。</p>
+            <p>最近 10 次路线距离与包裹数。</p>
           </div>
         </header>
         <div ref="trendChartRef" class="chart-host"></div>
@@ -96,7 +94,7 @@
         <header class="section-head">
           <div>
             <h2>最新调度工作量</h2>
-            <p>基于最近一次调度计划统计的快递员包裹量。</p>
+            <p>最近一次计划的快递员包裹量。</p>
           </div>
         </header>
         <div ref="courierChartRef" class="chart-host"></div>
@@ -108,7 +106,7 @@
         <header class="section-head">
           <div>
             <h2>包裹状态分布</h2>
-            <p>当前数据库中的包裹状态。</p>
+            <p>当前包裹状态。</p>
           </div>
         </header>
         <div ref="packageStatusChartRef" class="chart-host compact"></div>
@@ -118,7 +116,7 @@
         <header class="section-head">
           <div>
             <h2>快递员状态分布</h2>
-            <p>当前数据库中的快递员状态。</p>
+            <p>当前快递员状态。</p>
           </div>
         </header>
         <div ref="courierStatusChartRef" class="chart-host compact"></div>
@@ -153,32 +151,32 @@ const factualKpis = computed(() => [
   {
     label: '包裹总数',
     value: summary.value.factual.totalPackages,
-    caption: '数据库中的包裹样本'
+    caption: ''
   },
   {
     label: '待调度包裹',
     value: summary.value.factual.pendingPackages,
-    caption: '当前仍处于待调度状态'
+    caption: '待调度状态'
   },
   {
     label: '快递员总数',
     value: summary.value.factual.totalCouriers,
-    caption: '当前数据库中的快递员样本'
+    caption: ''
   },
   {
     label: '历史计划数',
     value: summary.value.factual.totalPlans,
-    caption: '已有路线结果的调度计划'
+    caption: '已生成路线'
   },
   {
     label: '累计路线距离',
     value: summary.value.factual.totalOptimizedDistance,
-    caption: '来自历史调度结果（km）'
+    caption: '历史路线总和'
   },
   {
     label: '平均每车包裹数',
     value: summary.value.factual.averagePackagesPerCourier,
-    caption: '基于最近一次调度计划'
+    caption: '最近一次计划'
   }
 ])
 
@@ -398,6 +396,32 @@ onMounted(() => loadData())
   margin: 0;
   color: #52606d;
   line-height: 1.5;
+}
+
+.estimate-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.estimate-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: rgba(220, 166, 30, 0.16);
+  color: #946200;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.estimate-meta p {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.45;
 }
 
 .kpi-grid,
