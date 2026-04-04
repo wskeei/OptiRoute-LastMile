@@ -301,6 +301,16 @@ const resetSimulation = () => {
   transition: transform 0.2s;
 }
 
+:deep(.courier-marker-inner .icon) {
+  flex-shrink: 0;
+}
+
+:deep(.courier-marker-inner .name) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 :deep(.courier-marker-inner:hover) {
   z-index: 1000;
   transform: scale(1.06);
