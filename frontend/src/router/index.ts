@@ -1,12 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { AUTH_REDIRECT_ROUTE, DEFAULT_ROUTE } from '../lib/ux'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
-      redirect: '/dashboard'
+      redirect: DEFAULT_ROUTE
     },
     {
       path: '/login',
@@ -72,7 +73,7 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
   // 如果路由需要认证且用户未登录，跳转到登录页
@@ -81,7 +82,7 @@ router.beforeEach((to, from, next) => {
   }
   // 如果已登录用户访问登录页，跳转到首页
   else if (to.path === '/login' && authStore.isAuthenticated) {
-    next('/dashboard')
+    next(AUTH_REDIRECT_ROUTE)
   }
   else {
     next()

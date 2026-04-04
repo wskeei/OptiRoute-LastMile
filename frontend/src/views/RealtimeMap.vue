@@ -1,21 +1,28 @@
 <template>
   <div class="realtime-map">
     <div class="control-panel glass-card">
-      <h2>🗺️ 实时监控地图</h2>
+      <div class="panel-copy">
+        <h2>路线监控</h2>
+        <p>查看最近一次已完成调度的路线与配送进度。</p>
+      </div>
       <div class="controls">
         <el-button type="primary" @click="nextStep" :disabled="!canStep">
-          ▶️ 下一步 ({{ currentStep }}/{{ totalSteps }})
+          下一步 ({{ currentStep }}/{{ totalSteps }})
         </el-button>
-        <el-button @click="resetSimulation">🔄 重置</el-button>
+        <el-button @click="resetSimulation">重置</el-button>
       </div>
     </div>
+
+    <el-alert v-if="statusMessage" type="info" :closable="false" show-icon :title="statusMessage">
+      如需看到路线结果，请先前往调度中心重置演示数据并启动一次调度。
+    </el-alert>
 
     <div class="map-container glass-card">
       <div ref="mapRef" style="height: calc(100vh - 200px); border-radius: 12px; overflow: hidden;"></div>
     </div>
 
     <div class="info-panel glass-card">
-      <h3>📊 配送进度</h3>
+      <h3>配送进度</h3>
       <div class="courier-list">
         <div v-for="courier in courierStatus" :key="courier.id" class="courier-item">
           <div class="courier-name" :style="{ color: courier.color }">
@@ -36,15 +43,21 @@ import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet-ant-path'
 import { ElMessage } from 'element-plus'
+import { getLatestCompletedPlan } from '../lib/analytics'
 
 const mapRef = ref()
 let map: any = null
 const routes = ref<any[]>([])
 const courierStatus = ref<any[]>([])
 const currentStep = ref(0)
+const statusMessage = ref('')
 let courierMarkers: any[] = [] // Non-reactive to prevent Leaflet proxy issues
-const stationCoord = [31.2304, 121.4737]
+type GeoJsonCoord = [number, number]
+
+const stationCoord: L.LatLngTuple = [31.2304, 121.4737]
 const colors = ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea']
+
+const toLatLng = (coord: GeoJsonCoord): L.LatLngTuple => [coord[1], coord[0]]
 
 const totalSteps = computed(() => {
   return Math.max(...courierStatus.value.map(c => c.total), 0)
@@ -71,23 +84,25 @@ const loadLatestDispatch = async () => {
   try {
     const planRes = await axios.get('/api/v1/dispatch/plans')
     if (planRes.data.length === 0) {
+      statusMessage.value = '还没有可用于监控的调度计划'
       ElMessage.warning('暂无调度计划')
       return
     }
 
-    // Explicitly sort by ID desc to get absolutely latest
-    const sortedPlans = planRes.data.sort((a: any, b: any) => b.id - a.id)
-    const latestPlan = sortedPlans.find((p: any) => p.status === 'READY')
+    const latestPlan = getLatestCompletedPlan(planRes.data)
     
     if (!latestPlan || !latestPlan.routes || latestPlan.routes.length === 0) {
+      statusMessage.value = '最近一次调度还没有可展示的路线结果'
       ElMessage.warning('最新计划没有路线数据')
       return
     }
 
+    statusMessage.value = ''
     routes.value = latestPlan.routes
     initializeSimulation()
   } catch (e) {
     console.error(e)
+    statusMessage.value = '加载路线结果失败'
     ElMessage.error('加载调度计划失败')
   }
 }
@@ -97,7 +112,7 @@ const drawRoutesAndPackages = () => {
     const color = route.geo_json?.color || colors[idx % colors.length]
 
     if (route.geo_json?.coordinates) {
-      const latlngs = route.geo_json.coordinates.map((c: any) => [c[1], c[0]])
+      const latlngs = route.geo_json.coordinates.map((c: GeoJsonCoord) => toLatLng(c))
       L.polyline(latlngs, { color, weight: 3, opacity: 0.4, dashArray: '5, 5' }).addTo(map)
     }
 
@@ -120,7 +135,7 @@ const drawRoutesAndPackages = () => {
           html: `<div style="background:${color};color:white;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">${pkgIdx + 1}</div>`,
           iconSize: [24, 24]
         })
-        const marker = L.marker([coord[1], coord[0]], { icon }).addTo(map)
+        const marker = L.marker(toLatLng(coord as GeoJsonCoord), { icon }).addTo(map)
         
         // Add detailed popup if data available
         if (pkgs[pkgIdx]) {
@@ -227,9 +242,9 @@ const nextStep = () => {
       // Valid path: Depot(0) -> Pkg1(1) ... PkgN(N) -> Depot(N+1)
       // Moving to: delivered + 1
       if (coords && coords.length > courier.delivered + 1) {
-        const nextCoord = coords[courier.delivered + 1]
+        const nextCoord = coords[courier.delivered + 1] as GeoJsonCoord
         // GeoJSON is [lon, lat], Leaflet needs [lat, lon]
-        courier.currentPos = [nextCoord[1], nextCoord[0]]
+        courier.currentPos = toLatLng(nextCoord)
         courier.delivered++
       } else {
         console.warn(`Missing coordinates for courier ${courier.name} at step ${courier.delivered}`)
@@ -242,7 +257,7 @@ const nextStep = () => {
   drawCouriers()
 
   if (!canStep.value) {
-    ElMessage.success('🎉 所有包裹配送完成！')
+    ElMessage.success('所有包裹配送完成')
   }
 }
 
@@ -261,7 +276,8 @@ const resetSimulation = () => {
 .realtime-map { display: flex; flex-direction: column; gap: 20px; }
 .glass-card { background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
 .control-panel { display: flex; justify-content: space-between; align-items: center; }
-.control-panel h2 { margin: 0; }
+.panel-copy h2 { margin: 0 0 4px; }
+.panel-copy p { margin: 0; color: #52606d; font-size: 14px; }
 .controls { display: flex; gap: 12px; }
 .info-panel h3 { margin: 0 0 16px 0; }
 .courier-list { display: flex; flex-direction: column; gap: 12px; }
@@ -296,5 +312,17 @@ const resetSimulation = () => {
 :deep(.courier-marker-inner:hover) {
   z-index: 1000;
   transform: translate(-50%, -50%) scale(1.1);
+}
+
+@media (max-width: 640px) {
+  .control-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 }
 </style>

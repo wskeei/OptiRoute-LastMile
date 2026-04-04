@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from app.main import app
 from app.db.session import get_db
 from app.models.all_models import Base, Package, Courier, DeliveryStation, PackageStatus, CourierStatus
+from app.api.v1.endpoints import dispatch as dispatch_endpoint
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -21,6 +22,7 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(scope="function")
 def test_db():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
 
@@ -54,9 +56,19 @@ def test_db():
     db.close()
     Base.metadata.drop_all(bind=engine)
 
+@pytest.fixture(scope="function")
+def background_runner_spy(monkeypatch):
+    calls = []
+
+    def fake_run_dispatch_background(plan_id: int):
+        calls.append(plan_id)
+
+    monkeypatch.setattr(dispatch_endpoint, "run_dispatch_background", fake_run_dispatch_background)
+    return calls
+
 client = TestClient(app)
 
-def test_create_dispatch_plan(test_db):
+def test_create_dispatch_plan(test_db, background_runner_spy):
     response = client.post("/api/v1/dispatch/plans", json={
         "title": "测试调度计划",
         "station_id": 1,
@@ -67,8 +79,9 @@ def test_create_dispatch_plan(test_db):
     assert data["title"] == "测试调度计划"
     assert data["station_id"] == 1
     assert data["status"] in ["PENDING", "OPTIMIZING"]
+    assert background_runner_spy == [data["id"]]
 
-def test_list_dispatch_plans(test_db):
+def test_list_dispatch_plans(test_db, background_runner_spy):
     client.post("/api/v1/dispatch/plans", json={
         "title": "测试计划1",
         "station_id": 1,
@@ -81,7 +94,7 @@ def test_list_dispatch_plans(test_db):
     assert len(data) >= 1
     assert data[0]["title"] == "测试计划1"
 
-def test_get_dispatch_plan(test_db):
+def test_get_dispatch_plan(test_db, background_runner_spy):
     create_response = client.post("/api/v1/dispatch/plans", json={
         "title": "测试计划详情",
         "station_id": 1,
@@ -95,7 +108,7 @@ def test_get_dispatch_plan(test_db):
     assert data["id"] == plan_id
     assert data["title"] == "测试计划详情"
 
-def test_get_plan_routes(test_db):
+def test_get_plan_routes(test_db, background_runner_spy):
     create_response = client.post("/api/v1/dispatch/plans", json={
         "title": "测试路线",
         "station_id": 1,

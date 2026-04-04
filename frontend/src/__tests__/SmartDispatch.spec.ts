@@ -1,119 +1,209 @@
-/**
- * SmartDispatch Component Tests
- *
- * To run these tests, install testing dependencies:
- * npm install -D vitest @vue/test-utils happy-dom
- *
- * Then add to package.json scripts:
- * "test": "vitest"
- */
-
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
-import SmartDispatch from '../views/SmartDispatch.vue'
+import { defineComponent, h } from 'vue'
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
 
+import SmartDispatch from '../views/SmartDispatch.vue'
+
 vi.mock('axios')
-vi.mock('leaflet', () => ({
-  default: {
-    map: vi.fn(() => ({
-      setView: vi.fn(() => ({ addTo: vi.fn() })),
-      eachLayer: vi.fn(),
-      removeLayer: vi.fn()
-    })),
-    tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
-    marker: vi.fn(() => ({ addTo: vi.fn(() => ({ bindPopup: vi.fn() })) })),
-    divIcon: vi.fn(),
-    circle: vi.fn(() => ({ addTo: vi.fn() }))
+vi.mock('leaflet', () => {
+  const chainable = () => ({
+    addTo: vi.fn().mockReturnThis(),
+    bindPopup: vi.fn().mockReturnThis(),
+    clearLayers: vi.fn(),
+    setView: vi.fn().mockReturnThis(),
+    invalidateSize: vi.fn()
+  })
+
+  return {
+    default: {
+      map: vi.fn(() => chainable()),
+      tileLayer: vi.fn(() => ({ addTo: vi.fn() })),
+      marker: vi.fn(() => chainable()),
+      circleMarker: vi.fn(() => chainable()),
+      circle: vi.fn(() => chainable()),
+      layerGroup: vi.fn(() => chainable()),
+      divIcon: vi.fn(),
+      polyline: { antPath: vi.fn(() => ({ addTo: vi.fn() })) }
+    }
+  }
+})
+vi.mock('leaflet-ant-path', () => ({}))
+vi.mock('element-plus', () => ({
+  ElMessage: {
+    success: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+    error: vi.fn()
   }
 }))
 
-describe('SmartDispatch Component', () => {
+const ButtonStub = defineComponent({
+  props: {
+    disabled: Boolean,
+    loading: Boolean,
+    type: String
+  },
+  emits: ['click'],
+  setup(props, { emit, slots }) {
+    return () =>
+      h(
+        'button',
+        {
+          class: ['el-button', props.type ? `el-button--${props.type}` : ''],
+          disabled: props.disabled,
+          'data-loading': String(props.loading),
+          onClick: () => emit('click')
+        },
+        slots.default?.()
+      )
+  }
+})
+
+const AlertStub = defineComponent({
+  props: {
+    title: String
+  },
+  setup(props, { slots }) {
+    return () =>
+      h('div', { class: 'el-alert' }, [
+        props.title ? h('strong', props.title) : null,
+        slots.title?.(),
+        slots.default?.()
+      ])
+  }
+})
+
+const FormStub = defineComponent({
+  setup(_, { slots }) {
+    return () => h('form', { class: 'el-form' }, slots.default?.())
+  }
+})
+
+const FormItemStub = defineComponent({
+  setup(_, { slots }) {
+    return () => h('div', { class: 'el-form-item' }, slots.default?.())
+  }
+})
+
+const StepsStub = defineComponent({
+  setup(_, { slots }) {
+    return () => h('div', { class: 'el-steps' }, slots.default?.())
+  }
+})
+
+const StepStub = defineComponent({
+  setup(_, { slots }) {
+    return () => h('div', { class: 'el-step' }, slots.default?.())
+  }
+})
+
+const RouterLinkStub = defineComponent({
+  props: {
+    to: {
+      type: String,
+      required: true
+    }
+  },
+  setup(props, { slots }) {
+    return () => h('a', { href: props.to }, slots.default?.())
+  }
+})
+
+const mountComponent = () =>
+  mount(SmartDispatch, {
+    global: {
+      stubs: {
+        'el-alert': AlertStub,
+        'el-button': ButtonStub,
+        'el-form': FormStub,
+        'el-form-item': FormItemStub,
+        'el-step': StepStub,
+        'el-steps': StepsStub,
+        'router-link': RouterLinkStub
+      }
+    }
+  })
+
+describe('SmartDispatch', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should render the component', () => {
-    const wrapper = mount(SmartDispatch)
-    expect(wrapper.find('h2').text()).toBe('🤖 AI智能调度中心')
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
-  it('should display reset and dispatch buttons', () => {
-    const wrapper = mount(SmartDispatch)
-    const buttons = wrapper.findAll('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(2)
+  it('explains the demo-only dispatch controls to the user', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: [] })
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('这个页面只保留会影响当前体验的真实动作')
+    expect(wrapper.text()).toContain('聚类数会根据当前可用快递员数量自动确定')
+    expect(wrapper.text()).toContain('遗传算法迭代次数和种群规模使用后端固定配置')
   })
 
-  it('should fetch package and courier data on mount', async () => {
-    const mockPackages = [
-      { id: 1, tracking_number: 'TEST001', status: 'PENDING' }
-    ]
-    const mockCouriers = [
-      { id: 1, name: '测试快递员', status: 'AVAILABLE' }
-    ]
+  it('keeps the dispatch action disabled when the sample data is not ready', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'ASSIGNED', latitude: 31.2, longitude: 121.4 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'OFF_DUTY' }] })
+      .mockResolvedValueOnce({ data: [] })
 
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockPackages })
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: mockCouriers })
+    const wrapper = mountComponent()
+    await flushPromises()
 
-    const wrapper = mount(SmartDispatch)
-    await wrapper.vm.$nextTick()
-
-    expect(axios.get).toHaveBeenCalledWith('/api/v1/delivery/packages?status=PENDING')
-    expect(axios.get).toHaveBeenCalledWith('/api/v1/delivery/couriers')
+    const dispatchButton = wrapper.findAll('button').find((button) => button.text().includes('开始调度'))
+    expect(dispatchButton?.attributes('disabled')).toBeDefined()
   })
 
-  it('should call reset API when reset button is clicked', async () => {
-    vi.mocked(axios.post).mockResolvedValueOnce({ data: { message: 'success' } })
-    vi.mocked(axios.get).mockResolvedValue({ data: [] })
+  it('creates a dispatch plan without sending fake frontend tuning parameters', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: [] })
+    vi.mocked(axios.post).mockResolvedValueOnce({ data: { id: 9 } })
 
-    const wrapper = mount(SmartDispatch)
-    await wrapper.vm.$nextTick()
+    const wrapper = mountComponent()
+    await flushPromises()
 
-    const resetButton = wrapper.find('button[type="warning"]')
-    await resetButton.trigger('click')
-
-    expect(axios.post).toHaveBeenCalledWith('/api/v1/dispatch/reset-demo')
-  })
-
-  it('should start dispatch when dispatch button is clicked', async () => {
-    const mockPlan = { id: 1, title: '测试计划', status: 'PENDING' }
-    vi.mocked(axios.post).mockResolvedValueOnce({ data: mockPlan })
-    vi.mocked(axios.get).mockResolvedValue({ data: [] })
-
-    const wrapper = mount(SmartDispatch)
-    await wrapper.vm.$nextTick()
-
-    const dispatchButton = wrapper.find('button[type="primary"]')
-    await dispatchButton.trigger('click')
+    const dispatchButton = wrapper.findAll('button').find((button) => button.text().includes('开始调度'))
+    await dispatchButton?.trigger('click')
 
     expect(axios.post).toHaveBeenCalledWith(
       '/api/v1/dispatch/plans',
       expect.objectContaining({
-        station_id: 1,
-        algorithm_meta: expect.any(Object)
+        station_id: 1
       })
     )
+    expect(vi.mocked(axios.post).mock.calls[0]?.[1]).not.toHaveProperty('algorithm_meta')
   })
 
-  it('should display progress steps during dispatch', async () => {
-    const wrapper = mount(SmartDispatch)
+  it('keeps polling failures visible in the page body with recovery guidance', async () => {
+    vi.useFakeTimers()
 
-    // Simulate loading state
-    await wrapper.setData({ loading: true, step: 2 })
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('poll failed'))
+    vi.mocked(axios.post).mockResolvedValueOnce({ data: { id: 9 } })
 
-    const steps = wrapper.findAll('.el-step')
-    expect(steps.length).toBe(4)
-  })
+    const wrapper = mountComponent()
+    await flushPromises()
 
-  it('should display result after successful dispatch', async () => {
-    const wrapper = mount(SmartDispatch)
+    const dispatchButton = wrapper.findAll('button').find((button) => button.text().includes('开始调度'))
+    await dispatchButton?.trigger('click')
+    await flushPromises()
 
-    await wrapper.setData({
-      result: { savedDistance: 25.3, savedCost: 156 }
-    })
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
 
-    const alert = wrapper.find('.el-alert')
-    expect(alert.exists()).toBe(true)
-    expect(alert.text()).toContain('25.3')
+    expect(wrapper.text()).toContain('调度状态获取失败')
+    expect(wrapper.text()).toContain('可以重新发起调度，或先点击“重置演示数据”刷新样本')
   })
 })

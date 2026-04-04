@@ -1,104 +1,218 @@
 <template>
-  <div class="dispatch">
-    <div class="dispatch-header glass-card">
-      <h2>🤖 AI智能调度中心</h2>
-      <div class="header-actions">
-        <el-button type="warning" size="large" @click="resetDemo" :loading="resetting" :disabled="loading">🔄 重置演示数据</el-button>
-        <el-button type="primary" size="large" :loading="loading" @click="startDispatch">
-          🚀 开始AI调度
+  <div class="dispatch page-shell">
+    <section class="page-hero">
+      <div>
+        <span class="eyebrow">调度中心</span>
+        <h1>先准备演示样本，再发起一次真实调度。</h1>
+        <p class="page-summary">
+          这个页面只保留会影响当前体验的真实动作。路线结果、总距离和状态都来自后端接口返回。
+        </p>
+      </div>
+
+      <div class="hero-actions">
+        <el-button type="warning" size="large" :loading="resetting" :disabled="loading" @click="resetDemo">
+          重置演示数据
+        </el-button>
+        <el-button type="primary" size="large" :loading="loading" :disabled="!canDispatch" @click="startDispatch">
+          开始调度
         </el-button>
       </div>
-    </div>
+    </section>
 
-    <div class="dispatch-content">
-      <div class="map-panel glass-card">
-        <h3>🗺️ 路径可视化</h3>
-        <div class="map-container">
+    <el-alert type="info" :closable="false" show-icon>
+      <template #title>当前展示的是演示流程</template>
+      “重置演示数据”会随机生成待调度包裹和可用快递员；界面不提供真实算法调参入口。
+    </el-alert>
+
+    <section class="dispatch-layout">
+      <article class="section-card map-panel">
+        <header class="section-head">
+          <div>
+            <h2>路线地图</h2>
+            <p>地图展示最近一次调度的路线结果，优化中会持续刷新。</p>
+          </div>
+        </header>
+
+        <div class="map-shell">
           <div ref="mapRef" class="map-view"></div>
 
-          <div class="config-overlay glass-card">
-            <h3>📋 调度配置</h3>
-            <el-form label-width="100px" size="small">
-              <el-form-item label="包裹数量">
-                <el-input v-model="packageCount" disabled />
-              </el-form-item>
-              <el-form-item label="快递员">
-                <el-input v-model="courierCount" disabled />
-              </el-form-item>
-              <el-form-item label="聚类数K">
-                <el-slider v-model="config.k" :min="2" :max="10" show-stops />
-              </el-form-item>
-              <el-form-item label="遗传代数">
-                <el-slider v-model="config.generations" :min="100" :max="1000" :step="100" show-stops />
-              </el-form-item>
-            </el-form>
+          <aside class="info-panel">
+            <section class="info-block">
+              <h3>当前样本</h3>
+              <div class="fact-list">
+                <div class="fact-item">
+                  <span>待调度包裹</span>
+                  <strong>{{ pendingPackageCount }}</strong>
+                </div>
+                <div class="fact-item">
+                  <span>可用快递员</span>
+                  <strong>{{ availableCourierCount }}</strong>
+                </div>
+                <div class="fact-item">
+                  <span>配送站</span>
+                  <strong>{{ stationName }}</strong>
+                </div>
+              </div>
+            </section>
 
-            <div v-if="loading" class="progress-section">
+            <section class="info-block">
+              <h3>执行说明</h3>
+              <ul class="note-list">
+                <li v-for="item in DISPATCH_TRUTH_NOTES" :key="item">{{ item }}</li>
+              </ul>
+            </section>
+
+            <section v-if="inlineStatus" class="info-block">
+              <h3>{{ inlineStatus.title }}</h3>
+              <p class="status-copy">{{ inlineStatus.message }}</p>
+              <div v-if="inlineStatus.action === 'retry-dispatch'" class="status-actions">
+                <el-button type="primary" size="small" :disabled="!canDispatch || loading" @click="startDispatch">
+                  重新发起调度
+                </el-button>
+              </div>
+            </section>
+
+            <section v-if="loading" class="info-block">
+              <h3>调度进度</h3>
               <el-steps :active="step" direction="vertical" size="small">
-                <el-step title="数据预处理" />
-                <el-step title="K-Means聚类" />
-                <el-step title="遗传算法优化" />
-                <el-step title="完成" />
+                <el-step title="准备数据" />
+                <el-step title="聚类分配" />
+                <el-step title="路径优化" />
+                <el-step title="结果输出" />
               </el-steps>
-            </div>
+            </section>
 
-            <div v-if="result" class="result-section">
-              <el-alert type="success" :closable="false">
-                <template #title>
-                  ✅ 节省 {{ result.savedDistance }}km <span v-if="result.generation"> (迭代: {{ result.generation }}代)</span>
-                </template>
-              </el-alert>
-            </div>
-          </div>
+            <section v-else-if="result" class="info-block">
+              <h3>本次结果</h3>
+              <div class="result-grid">
+                <div>
+                  <span>路线数</span>
+                  <strong>{{ result.routeCount }}</strong>
+                </div>
+                <div>
+                  <span>总距离</span>
+                  <strong>{{ result.totalDistance }} km</strong>
+                </div>
+                <div>
+                  <span>最新迭代进度</span>
+                  <strong>{{ result.generation || 0 }} 代</strong>
+                </div>
+              </div>
+            </section>
+          </aside>
         </div>
-      </div>
-    </div>
+      </article>
+
+      <article class="section-card workflow-panel">
+        <header class="section-head">
+          <div>
+            <h2>下一步怎么做</h2>
+            <p>如果这是第一次打开系统，按这三步操作即可。</p>
+          </div>
+        </header>
+
+        <ol class="step-list">
+          <li v-for="item in ONBOARDING_STEPS" :key="item.title" class="step-item">
+            <strong>{{ item.title }}</strong>
+            <p>{{ item.description }}</p>
+            <router-link class="text-link" :to="item.path">{{ item.actionLabel }}</router-link>
+          </li>
+        </ol>
+
+        <el-alert
+          v-if="!canDispatch"
+          type="warning"
+          :closable="false"
+          show-icon
+          title="当前还不能发起调度"
+        >
+          请先确保有待调度包裹和可用快递员。最简单的做法是点击“重置演示数据”。
+        </el-alert>
+      </article>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet-ant-path'
 import { ElMessage } from 'element-plus'
 
+import { DISPATCH_TRUTH_NOTES, ONBOARDING_STEPS } from '../lib/ux'
+import { sortPlansByNewest } from '../lib/analytics'
+
+interface DispatchResult {
+  routeCount: number
+  totalDistance: string
+  generation: number
+}
+
+interface InlineStatus {
+  title: string
+  message: string
+  action?: 'retry-dispatch'
+}
+
 const loading = ref(false)
+const resetting = ref(false)
 const step = ref(0)
-const config = ref({ k: 5, generations: 500 })
 const batchName = ref('')
-const packageCount = ref('0')
-const courierCount = ref('0')
-const result = ref<any>(null)
+const pendingPackageCount = ref(0)
+const availableCourierCount = ref(0)
+const stationName = ref('人民广场配送站')
+const result = ref<DispatchResult | null>(null)
+const inlineStatus = ref<InlineStatus | null>(null)
 const mapRef = ref()
-let map: any = null
 const stationId = ref(1)
 const allPackages = ref<any[]>([])
 
+let map: any = null
 const packageLayerGroup = ref<any>(null)
+const routeLayerGroup = ref<any>(null)
+
+const canDispatch = computed(() => pendingPackageCount.value > 0 && availableCourierCount.value > 0)
+
+const setInlineStatus = (title: string, message: string, action?: 'retry-dispatch') => {
+  inlineStatus.value = { title, message, action }
+}
+
+const fetchDispatchContext = async () => {
+  const [packagesRes, couriersRes] = await Promise.all([
+    axios.get('/api/v1/delivery/packages'),
+    axios.get('/api/v1/delivery/couriers')
+  ])
+
+  allPackages.value = packagesRes.data
+  pendingPackageCount.value = packagesRes.data.filter((item: any) => item.status === 'PENDING').length
+  availableCourierCount.value = couriersRes.data.filter((item: any) => item.status === 'AVAILABLE').length
+}
 
 const drawPackageMarkers = () => {
   if (!map) return
 
-  // Initialize or clear package layer group
   if (!packageLayerGroup.value) {
     packageLayerGroup.value = L.layerGroup().addTo(map)
   } else {
     packageLayerGroup.value.clearLayers()
   }
 
-  const pendingPackages = allPackages.value.filter((pkg: any) => pkg.status === 'PENDING')
-  pendingPackages.forEach((pkg: any) => {
-    L.circleMarker([pkg.latitude, pkg.longitude], {
+  const pendingPackages = allPackages.value.filter((item: any) => item.status === 'PENDING')
+
+  pendingPackages.forEach((item: any) => {
+    L.circleMarker([item.latitude, item.longitude], {
       radius: 6,
-      fillColor: '#3b82f6',
-      color: '#fff',
+      fillColor: '#1f6f8b',
+      color: '#ffffff',
       weight: 2,
       opacity: 1,
       fillOpacity: 0.9
     })
-    .addTo(packageLayerGroup.value)
-    .bindPopup(`<b>${pkg.recipient_name}</b><br>单号: ${pkg.tracking_number}<br>重量: ${pkg.weight}kg`)
+      .addTo(packageLayerGroup.value)
+      .bindPopup(
+        `<b>${item.recipient_name}</b><br>单号: ${item.tracking_number}<br>重量: ${item.weight}kg`
+      )
   })
 }
 
@@ -106,193 +220,175 @@ onMounted(async () => {
   batchName.value = `调度计划 ${new Date().toLocaleString('zh-CN')}`
 
   try {
-    const [pkgRes, courierRes] = await Promise.all([
-      axios.get('/api/v1/delivery/packages'),
-      axios.get('/api/v1/delivery/couriers')
-    ])
-    allPackages.value = pkgRes.data
-    const pendingCount = pkgRes.data.filter((p: any) => p.status === 'PENDING').length
-    packageCount.value = pendingCount.toString()
-    courierCount.value = courierRes.data.length.toString()
+    await fetchDispatchContext()
+    inlineStatus.value = null
 
     map = L.map(mapRef.value).setView([31.2304, 121.4737], 12)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map)
 
     const stationIcon = L.divIcon({
-      html: '<div style="background:#667eea;width:20px;height:20px;border-radius:50%;border:3px solid white;box-shadow:0 4px 10px rgba(0,0,0,0.3);"></div>',
-      iconSize: [20, 20]
+      html: '<div style="background:#184a68;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 12px rgba(16,42,67,0.25);"></div>',
+      iconSize: [18, 18]
     })
-    L.marker([31.2304, 121.4737], { icon: stationIcon }).addTo(map).bindPopup('配送站')
+    L.marker([31.2304, 121.4737], { icon: stationIcon }).addTo(map).bindPopup(stationName.value)
 
     drawPackageMarkers()
-    
-    // Check for active plan to restore state
-    const plansRes = await axios.get('/api/v1/dispatch/plans')
-    const activePlans = plansRes.data.filter((p: any) => p.status === 'READY' || p.status === 'COMPLETED' || p.status === 'OPTIMIZING')
-    
-    if (activePlans.length > 0) {
-      const latestPlan = activePlans[0]
-      if (latestPlan.routes && latestPlan.routes.length > 0) {
-        drawRoutes(latestPlan.routes)
-        step.value = 3
-        
-        // Restore config if available
-        if (latestPlan.algorithm_meta) {
-            config.value = latestPlan.algorithm_meta
-        }
-        
-        ElMessage.success('已恢复上次的调度结果')
-      }
-    }
+    await restoreLatestPlan()
 
-    // Force map resize just in case
     setTimeout(() => {
       map.invalidateSize()
     }, 200)
-  } catch (e) {
-    console.error(e)
+  } catch (error) {
+    console.error(error)
+    setInlineStatus('调度中心加载失败', '无法读取当前样本数据，请刷新页面后重试。')
   }
 })
 
-const startDispatch = async () => {
-  loading.value = true
-  step.value = 1
-  result.value = null
+const restoreLatestPlan = async () => {
+  const plansRes = await axios.get('/api/v1/dispatch/plans')
+  const activePlans = sortPlansByNewest(plansRes.data).filter((plan: any) =>
+    ['READY', 'COMPLETED', 'OPTIMIZING'].includes(plan.status)
+  )
 
-  try {
-    ElMessage.info('正在创建调度计划...')
-    const res = await axios.post('/api/v1/dispatch/plans', {
-      title: batchName.value,
-      station_id: stationId.value,
-      algorithm_meta: config.value
-    })
+  if (activePlans.length === 0) {
+    return
+  }
 
-    step.value = 2
-    ElMessage.success('计划已创建，正在计算最优路线...')
-
-    await pollStatus(res.data.id)
-  } catch (e: any) {
-    ElMessage.error(e.response?.data?.detail || '调度失败')
-    loading.value = false
-    step.value = 0
+  const latestPlan = activePlans[0]
+  if (latestPlan.routes && latestPlan.routes.length > 0) {
+    drawRoutes(latestPlan.routes)
+    step.value = latestPlan.status === 'OPTIMIZING' ? 2 : 3
+    ElMessage.success('已恢复最近一次调度结果')
   }
 }
 
-const routeLayerGroup = ref<any>(null)
+const startDispatch = async () => {
+  if (!canDispatch.value) {
+    ElMessage.warning('请先准备待调度包裹和可用快递员')
+    return
+  }
+
+  loading.value = true
+  step.value = 1
+  result.value = null
+  inlineStatus.value = null
+
+  try {
+    ElMessage.info('正在创建调度计划...')
+    const response = await axios.post('/api/v1/dispatch/plans', {
+      title: batchName.value,
+      station_id: stationId.value
+    })
+
+    step.value = 2
+    ElMessage.success('计划已创建，正在等待路线结果...')
+    await pollStatus(response.data.id)
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '调度失败')
+    loading.value = false
+    step.value = 0
+    setInlineStatus('调度创建失败', '当前无法创建新的调度计划，请稍后重试。', 'retry-dispatch')
+  }
+}
 
 const pollStatus = async (planId: number) => {
   const interval = setInterval(async () => {
     try {
-      const res = await axios.get(`/api/v1/dispatch/plans/${planId}`)
-      
-      // 实时更新路线 (即使还在优化中)
-      if (res.data.routes && res.data.routes.length > 0) {
-        drawRoutes(res.data.routes)
+      const response = await axios.get(`/api/v1/dispatch/plans/${planId}`)
+
+      if (response.data.routes && response.data.routes.length > 0) {
+        drawRoutes(response.data.routes)
       }
 
-      if (res.data.status === 'READY' || res.data.status === 'COMPLETED') {
+      if (response.data.status === 'READY' || response.data.status === 'COMPLETED') {
         clearInterval(interval)
         step.value = 3
         loading.value = false
-        
-        if (!res.data.routes || res.data.routes.length === 0) {
-           ElMessage.error('调度失败：没有生成路线，请确保有待调度的包裹')
-           step.value = 0
+
+        if (!response.data.routes || response.data.routes.length === 0) {
+          ElMessage.error('调度未生成路线，请先检查演示样本数据')
+          step.value = 0
         } else {
-           ElMessage.success('🎉 调度完成！')
+          ElMessage.success('路线结果已生成')
         }
       }
-    } catch (e) {
+    } catch (error) {
       clearInterval(interval)
       loading.value = false
+      console.error(error)
+      setInlineStatus('调度状态获取失败', '可以重新发起调度，或先点击“重置演示数据”刷新样本。', 'retry-dispatch')
     }
   }, 1000)
 }
 
 const drawRoutes = (routes: any[]) => {
   if (!map) return
-  
-  // 初始化或清空路线图层组
+
   if (!routeLayerGroup.value) {
     routeLayerGroup.value = L.layerGroup().addTo(map)
   } else {
     routeLayerGroup.value.clearLayers()
   }
 
-  const colors = ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea']
+  const fallbackColors = ['#184a68', '#4c956c', '#b08968', '#c05621', '#6b7280']
   let totalDistance = 0
   let maxGeneration = 0
 
-  routes.forEach((route, idx) => {
-    if (route.geo_json?.coordinates) {
-      const latlngs = route.geo_json.coordinates.map((c: any) => [c[1], c[0]])
-      const color = route.geo_json.color || colors[idx % colors.length]
-      
-      // 检查是否在优化中
-      const isOptimizing = route.geo_json.status === 'optimizing'
-      if (route.geo_json.generation > maxGeneration) {
-        maxGeneration = route.geo_json.generation
+  routes.forEach((route, index) => {
+    if (!route.geo_json?.coordinates) return
+
+    const latlngs = route.geo_json.coordinates.map((coord: any) => [coord[1], coord[0]])
+    const color = route.geo_json.color || fallbackColors[index % fallbackColors.length]
+    const isOptimizing = route.geo_json.status === 'optimizing'
+
+    if (route.geo_json.generation > maxGeneration) {
+      maxGeneration = route.geo_json.generation
+    }
+
+    try {
+      if ((L as any).polyline.antPath) {
+        ;(L as any).polyline.antPath(latlngs, {
+          color,
+          weight: 4,
+          opacity: isOptimizing ? 0.5 : 0.72,
+          pulseColor: '#ffffff',
+          delay: isOptimizing ? 420 : 800,
+          dashArray: isOptimizing ? [10, 18] : [10, 10]
+        }).addTo(routeLayerGroup.value)
+      } else {
+        L.polyline(latlngs, {
+          color,
+          weight: 4,
+          opacity: 0.72
+        }).addTo(routeLayerGroup.value)
       }
 
-      try {
-        if ((L as any).polyline.antPath) {
-          (L as any).polyline.antPath(latlngs, {
-            color,
-            weight: 4,
-            opacity: isOptimizing ? 0.5 : 0.7,
-            pulseColor: '#FFFFFF',
-            delay: isOptimizing ? 400 : 800,
-            dashArray: isOptimizing ? [10, 20] : [10, 10]
-          }).addTo(routeLayerGroup.value)
-        } else {
-          L.polyline(latlngs, {
-            color,
-            weight: 4,
-            opacity: 0.7
-          }).addTo(routeLayerGroup.value)
+      const orderedPackages = route.geo_json.packages_ordered || []
+
+      route.geo_json.coordinates.slice(1, -1).forEach((coord: any, packageIndex: number) => {
+        const icon = L.divIcon({
+          html: `<div style="background:${color};color:white;width:22px;height:22px;border-radius:999px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;">${packageIndex + 1}</div>`,
+          iconSize: [22, 22]
+        })
+
+        const marker = L.marker([coord[1], coord[0]], { icon }).addTo(routeLayerGroup.value)
+        const packageInfo = orderedPackages[packageIndex]
+
+        if (packageInfo) {
+          marker.bindPopup(
+            `<div style="font-size:13px;"><b>${packageIndex + 1}. ${packageInfo.recipient_name || '收件人'}</b><br><span style="color:#52606d">单号: ${packageInfo.tracking_number || '-'}</span><br><span style="color:#52606d">重量: ${packageInfo.weight || 1}kg</span><br><span style="color:#52606d">${packageInfo.address || ''}</span></div>`
+          )
         }
-
-        // Draw package markers on the route
-        const pkgs = route.geo_json.packages_ordered || []
-        
-        // coordinates: [Depot, Pkg1, Pkg2, ..., Depot]
-        if (route.geo_json.coordinates.length > 2) {
-          route.geo_json.coordinates.slice(1, -1).forEach((coord: any, pkgIdx: number) => {
-             // Create marker
-             const icon = L.divIcon({
-                html: `<div style="background:${color};color:white;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">${pkgIdx + 1}</div>`,
-                iconSize: [24, 24]
-             })
-             const marker = L.marker([coord[1], coord[0]], { icon }).addTo(routeLayerGroup.value)
-
-             // Bind detailed popup
-             if (pkgs[pkgIdx]) {
-                const p = pkgs[pkgIdx]
-                marker.bindPopup(`
-                  <div style="font-size:13px;">
-                    <b>${pkgIdx + 1}. ${p.recipient_name || '收件人'}</b><br>
-                    <span style="color:#666">单号: ${p.tracking_number || '-'}</span><br>
-                    <span style="color:#666">重量: ${p.weight || 1}kg</span><br>
-                    <span style="color:#666">${p.address || ''}</span>
-                  </div>
-                `)
-             }
-          })
-        }
-
-      } catch (e) {
-        console.error(e)
-      }
+      })
 
       if (route.geo_json.cluster_center) {
         const [centerLat, centerLon] = route.geo_json.cluster_center
         const packageCount = route.geo_json.package_count || 10
-        const baseRadius = 5000 // 参考实时监控地图的大小
-        const radius = baseRadius + (packageCount * 100)
+        const radius = 5000 + packageCount * 100
 
         L.circle([centerLat, centerLon], {
-          radius: radius,
-          color: color,
+          radius,
+          color,
           fillColor: color,
           fillOpacity: 0.05,
           weight: 1,
@@ -301,52 +397,42 @@ const drawRoutes = (routes: any[]) => {
       }
 
       totalDistance += route.geo_json.total_distance_km || 0
+    } catch (error) {
+      console.error(error)
     }
   })
 
-  // 更新结果面板 (显示迭代代数)
   result.value = {
-    savedDistance: totalDistance.toFixed(1),
+    routeCount: routes.length,
+    totalDistance: totalDistance.toFixed(1),
     generation: maxGeneration
   }
 }
 
-const resetting = ref(false)
-
 const resetDemo = async () => {
   resetting.value = true
+
   try {
-    console.log('Sending reset-demo request...')
     await axios.post('/api/v1/dispatch/reset-demo')
-    console.log('Reset demo success')
-    ElMessage.success('演示数据已重置，可以重新调度')
+    ElMessage.success('演示样本已更新，可以重新发起调度')
     result.value = null
     step.value = 0
+    inlineStatus.value = null
 
-    const [pkgRes, courierRes] = await Promise.all([
-      axios.get('/api/v1/delivery/packages'),
-      axios.get('/api/v1/delivery/couriers')
-    ])
-
-    allPackages.value = pkgRes.data
-    const pendingCount = pkgRes.data.filter((p: any) => p.status === 'PENDING').length
-    packageCount.value = pendingCount.toString()
-
-    const availableCouriers = courierRes.data.filter((c: any) => c.status === 'AVAILABLE')
-    courierCount.value = availableCouriers.length.toString()
-    config.value.k = availableCouriers.length
+    await fetchDispatchContext()
 
     if (routeLayerGroup.value) {
-        routeLayerGroup.value.clearLayers()
+      routeLayerGroup.value.clearLayers()
     }
     if (packageLayerGroup.value) {
-        packageLayerGroup.value.clearLayers()
+      packageLayerGroup.value.clearLayers()
     }
 
     drawPackageMarkers()
-  } catch (e: any) {
-    console.error('Reset failed:', e)
-    ElMessage.error(e.response?.data?.detail || '重置失败: ' + (e.message || '未知错误'))
+  } catch (error: any) {
+    console.error(error)
+    ElMessage.error(error.response?.data?.detail || `重置失败: ${error.message || '未知错误'}`)
+    setInlineStatus('重置演示数据失败', '请稍后重试；如果问题持续存在，请刷新页面后再操作。')
   } finally {
     resetting.value = false
   }
@@ -354,18 +440,213 @@ const resetDemo = async () => {
 </script>
 
 <style scoped>
-.dispatch { display: flex; flex-direction: column; gap: 20px; height: calc(100vh - 40px); }
-.glass-card { background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-.dispatch-header { display: flex; justify-content: space-between; align-items: center; }
-.dispatch-header h2 { margin: 0; }
-.header-actions { display: flex; gap: 12px; }
-.dispatch-content { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.map-panel { flex: 1; padding: 24px; display: flex; flex-direction: column; min-height: 0; }
-.map-panel h3 { margin: 0 0 16px 0; }
-.map-container { flex: 1; position: relative; min-height: 0; }
-.map-view { width: 100%; height: 100%; min-height: 500px; border-radius: 12px; overflow: hidden; }
-.config-overlay { position: absolute; top: 16px; left: 16px; width: 280px; max-height: calc(100% - 32px); overflow-y: auto; z-index: 1000; padding: 16px; background: rgba(255,255,255,0.95); }
-.config-overlay h3 { margin: 0 0 12px 0; font-size: 16px; }
-.progress-section { margin-top: 16px; }
-.result-section { margin-top: 12px; }
+.dispatch {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.page-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+}
+
+.eyebrow {
+  display: inline-flex;
+  margin-bottom: 0.75rem;
+  color: #486581;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.page-hero h1 {
+  margin: 0 0 0.5rem;
+  color: #102a43;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+}
+
+.page-summary {
+  margin: 0;
+  max-width: 42rem;
+  color: #52606d;
+  line-height: 1.6;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dispatch-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(18rem, 0.9fr);
+  gap: 1rem;
+}
+
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.section-head h2 {
+  margin: 0 0 0.25rem;
+  color: #102a43;
+  font-size: 1.1rem;
+}
+
+.section-head p {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.5;
+}
+
+.map-panel {
+  min-height: 38rem;
+}
+
+.map-shell {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  gap: 1rem;
+}
+
+.map-view {
+  min-height: 32rem;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(24, 74, 104, 0.08);
+}
+
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.info-block {
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(247, 250, 252, 0.92);
+  border: 1px solid rgba(24, 74, 104, 0.08);
+}
+
+.info-block h3 {
+  margin: 0 0 0.85rem;
+  color: #102a43;
+  font-size: 1rem;
+}
+
+.fact-list,
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+.fact-item,
+.result-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fact-item span,
+.result-grid span {
+  color: #486581;
+  font-size: 0.85rem;
+}
+
+.fact-item strong,
+.result-grid strong {
+  color: #102a43;
+  font-size: 1.25rem;
+}
+
+.note-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #243b53;
+  line-height: 1.7;
+}
+
+.status-copy {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.6;
+}
+
+.status-actions {
+  margin-top: 0.75rem;
+}
+
+.workflow-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.step-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(224, 232, 240, 0.45);
+}
+
+.step-item strong {
+  color: #102a43;
+}
+
+.step-item p {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.5;
+}
+
+.text-link {
+  color: #184a68;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (max-width: 1100px) {
+  .dispatch-layout,
+  .map-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-panel {
+    order: -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .page-hero {
+    align-items: flex-start;
+  }
+
+  .hero-actions {
+    justify-content: flex-start;
+  }
+}
 </style>

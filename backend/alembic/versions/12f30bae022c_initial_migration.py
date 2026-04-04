@@ -53,7 +53,8 @@ def upgrade() -> None:
     sa.Column('phone', sa.String(), nullable=True),
     sa.Column('station_id', sa.Integer(), nullable=True),
     sa.Column('status', sa.Enum('AVAILABLE', 'BUSY', 'OFF_DUTY', name='courierstatus'), nullable=True),
-    sa.Column('max_capacity', sa.Integer(), nullable=True),
+    sa.Column('max_capacity', sa.Float(), nullable=True),
+    sa.Column('current_load', sa.Float(), nullable=True, server_default='0.0'),
     sa.ForeignKeyConstraint(['station_id'], ['stations.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -96,6 +97,8 @@ def upgrade() -> None:
     sa.Column('recipient_address', sa.String(), nullable=True),
     sa.Column('latitude', sa.Float(), nullable=False),
     sa.Column('longitude', sa.Float(), nullable=False),
+    sa.Column('weight', sa.Float(), nullable=True, server_default='1.0'),
+    sa.Column('volume', sa.Float(), nullable=True, server_default='0.1'),
     sa.Column('status', sa.Enum('PENDING', 'ASSIGNED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', name='packagestatus'), nullable=True),
     sa.Column('route_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['route_id'], ['delivery_routes.id'], ),
