@@ -81,4 +81,49 @@ describe('page-level persistent feedback', () => {
     expect(wrapper.text()).toContain('运营分析加载失败')
     expect(wrapper.text()).toContain('请稍后重试，或先前往调度中心生成一条新的调度结果')
   })
+
+  it('keeps analytics estimate framing concise in the success state', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 1,
+            status: 'READY',
+            created_at: '2026-04-04T10:00:00Z',
+            routes: [{ courier_id: 1, geo_json: { total_distance_km: 12, package_count: 6 } }]
+          }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 1, status: 'PENDING' },
+          { id: 2, status: 'DELIVERED' }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 1, name: '张三', status: 'AVAILABLE' }]
+      })
+
+    const wrapper = mountWithStubs(Analytics)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('实际数据')
+    expect(wrapper.text()).toContain('演示估算')
+    expect(wrapper.text()).not.toContain('以下收益数字仅用于演示说明')
+  })
+
+  it('keeps the dashboard focused on one onboarding surface after copy reduction', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ id: 1 }, { id: 2 }] })
+      .mockResolvedValueOnce({ data: [{ id: 1 }] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] })
+
+    const wrapper = mountWithStubs(Dashboard)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('演示数据与估算结果会单独标注')
+    expect(wrapper.text()).not.toContain('当前是演示环境')
+    expect(wrapper.text()).not.toContain('关键入口')
+  })
 })

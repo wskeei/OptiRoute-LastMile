@@ -1,11 +1,9 @@
 <template>
-  <div class="history">
-    <div class="glass-card header">
+  <div class="history page-shell">
+    <section class="section-card header">
       <div class="header-text">
-        <h2>历史调度记录与复盘</h2>
-        <p class="header-note">
-          按时间线回看已完成的调度方案，选取任何一条记录即可展开复盘细节。
-        </p>
+        <h1>调度历史</h1>
+        <p class="header-note">已完成计划按时间排序，点开即可复盘。</p>
       </div>
       <div class="header-actions">
         <el-button @click="loadPlans">刷新记录</el-button>
@@ -13,36 +11,36 @@
           {{ compareMode ? '退出复盘对比' : '进入复盘对比' }}
         </el-button>
       </div>
-    </div>
+    </section>
 
-    <div v-if="!loading && !loadError && plans.length === 0" class="glass-card empty-history">
+    <section v-if="!loading && !loadError && plans.length === 0" class="section-card empty-history">
       <h3>还没有已完成的调度记录</h3>
       <p>先前往调度中心重置演示数据并发起一次调度，完成后这里会出现可复盘的路线记录。</p>
       <router-link class="empty-link" :to="ONBOARDING_STEPS[0]?.path || '/dispatch'">
         {{ ONBOARDING_STEPS[0]?.actionLabel || '前往调度中心' }}
       </router-link>
-    </div>
+    </section>
 
-    <div v-else-if="loading" class="glass-card empty-history">
+    <section v-else-if="loading" class="section-card empty-history">
       <h3>正在加载历史记录</h3>
       <p>请稍候，系统正在读取已完成的调度计划。</p>
-    </div>
+    </section>
 
-    <div v-else-if="loadError" class="glass-card empty-history">
+    <section v-else-if="loadError" class="section-card empty-history">
       <h3>历史记录加载失败</h3>
       <p>{{ loadError }}</p>
       <router-link class="empty-link" to="/dispatch">前往调度中心</router-link>
-    </div>
+    </section>
 
     <div v-else-if="!compareMode" class="single-view">
-      <div class="stats-overview glass-card">
+      <section class="stats-overview section-card">
         <h3>历史调度趋势</h3>
-        <p class="section-note">图表按照创建时间顺序展示已完成记录，供复盘走查。</p>
+        <p class="section-note">按创建时间查看已完成记录。</p>
         <div ref="trendChartRef" style="height: 300px"></div>
-      </div>
+      </section>
 
       <div class="history-grid">
-        <div v-for="plan in plans" :key="plan.id" class="plan-card glass-card">
+        <div v-for="plan in plans" :key="plan.id" class="plan-card section-card">
           <div class="plan-header">
             <div>
               <h4>{{ plan.title }}</h4>
@@ -63,18 +61,6 @@
               <span class="label">总距离</span>
               <span class="value">{{ calculateTotalDistance(plan.routes) }}km</span>
             </div>
-            <div class="mini-metric">
-              <span class="label">平均距离</span>
-              <span class="value">{{ calculateAvgDistance(plan.routes) }}km</span>
-            </div>
-            <div class="mini-metric">
-              <span class="label">总重量</span>
-              <span class="value">{{ calculateTotalWeight(plan.routes) }}kg</span>
-            </div>
-          </div>
-          <div class="plan-params">
-            <el-tag size="small">K={{ plan.algorithm_meta?.k || 'N/A' }}</el-tag>
-            <el-tag size="small">代数={{ plan.algorithm_meta?.generations || 'N/A' }}</el-tag>
           </div>
           <div class="plan-actions">
             <el-button type="text" @click.stop="openPlanDetail(plan)">查看复盘</el-button>
@@ -84,7 +70,7 @@
     </div>
 
     <div v-else class="compare-view">
-      <div class="compare-selector glass-card">
+      <div class="compare-selector section-card">
         <h3>选择复盘对比方案（最多3个）</h3>
         <el-checkbox-group v-model="selectedPlans" :max="3">
           <el-checkbox v-for="plan in plans" :key="plan.id" :label="plan.id" :disabled="selectedPlans.length >= 3 && !selectedPlans.includes(plan.id)">
@@ -94,12 +80,12 @@
       </div>
 
       <div v-if="selectedPlans.length >= 2" class="compare-content">
-        <div class="compare-chart glass-card">
+        <div class="compare-chart section-card">
           <h3>方案复盘对比</h3>
           <div ref="compareChartRef" style="height: 350px"></div>
         </div>
 
-        <div class="compare-table glass-card">
+        <div class="compare-table section-card">
           <h3>详细复盘指标</h3>
           <el-table :data="comparisonData" style="margin-top: 12px">
             <el-table-column label="指标" prop="metric" width="150" fixed />
@@ -127,7 +113,10 @@
           <el-descriptions-item label="总包裹数">{{ calculateTotalPackages(activePlan.routes) }}</el-descriptions-item>
           <el-descriptions-item label="路线数">{{ activePlan.routes?.length || 0 }}</el-descriptions-item>
           <el-descriptions-item label="总距离">{{ calculateTotalDistance(activePlan.routes) }} km</el-descriptions-item>
+          <el-descriptions-item label="平均距离">{{ calculateAvgDistance(activePlan.routes) }} km</el-descriptions-item>
           <el-descriptions-item label="总重量">{{ calculateTotalWeight(activePlan.routes) }} kg</el-descriptions-item>
+          <el-descriptions-item label="K值">{{ activePlan.algorithm_meta?.k || 'N/A' }}</el-descriptions-item>
+          <el-descriptions-item label="遗传代数">{{ activePlan.algorithm_meta?.generations || 'N/A' }}</el-descriptions-item>
         </el-descriptions>
         <el-divider />
         <div class="route-list">
@@ -374,42 +363,127 @@ const getStatusLabel = (status: string) => {
 </script>
 
 <style scoped>
-.history { display: flex; flex-direction: column; gap: 20px; }
-.glass-card { background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-h2, h3, h4 { margin: 0; }
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
-.header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-.header-text { max-width: 520px; }
-.header-note { margin-top: 6px; color: #4a5568; font-size: 14px; line-height: 1.4; }
-.header-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+}
 
-.single-view { display: flex; flex-direction: column; gap: 20px; }
-.section-note { margin: 6px 0 12px; color: #718096; font-size: 13px; }
-.stats-overview { margin-bottom: 8px; }
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
 
-.history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
-.plan-card { transition: all 0.3s; }
-.plan-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(102, 126, 234, 0.2); }
+.header h1 {
+  color: #102a43;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+}
 
-.plan-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
-.plan-time { font-size: 13px; color: #718096; margin-top: 4px; }
+.header-text {
+  max-width: 32rem;
+}
 
-.plan-metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; }
-.mini-metric { display: flex; flex-direction: column; padding: 8px; background: rgba(102, 126, 234, 0.05); border-radius: 6px; }
-.mini-metric .label { font-size: 12px; color: #718096; margin-bottom: 4px; }
-.mini-metric .value { font-size: 18px; font-weight: bold; color: #667eea; }
+.header-note {
+  margin-top: 0.35rem;
+  color: #52606d;
+  line-height: 1.5;
+}
 
-.plan-params { display: flex; gap: 8px; flex-wrap: wrap; }
-.plan-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.single-view,
+.compare-view,
+.compare-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.section-note {
+  margin: 0.35rem 0 0.75rem;
+  color: #6b7f92;
+  font-size: 0.82rem;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 1rem;
+}
+
+.plan-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.plan-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
+}
+
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.plan-time {
+  font-size: 0.82rem;
+  color: #6b7f92;
+  margin-top: 0.25rem;
+}
+
+.plan-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.mini-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  background: rgba(247, 250, 252, 0.92);
+  border-radius: 0.9rem;
+  border: 1px solid rgba(24, 74, 104, 0.08);
+}
+
+.mini-metric .label {
+  font-size: 0.78rem;
+  color: #6b7f92;
+}
+
+.mini-metric .value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #184a68;
+}
+
+.plan-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.9rem;
+}
+
 .plan-actions .el-button { padding: 0; color: #4c51bf; }
 
-.compare-view { display: flex; flex-direction: column; gap: 20px; }
-.compare-selector { margin-bottom: 8px; }
-.compare-selector h3 { margin-bottom: 16px; }
+.compare-selector h3 { margin-bottom: 1rem; }
 .el-checkbox-group { display: flex; flex-direction: column; gap: 12px; }
-
-.compare-content { display: flex; flex-direction: column; gap: 20px; }
-.compare-chart, .compare-table { margin-top: 0; }
 
 .empty-history { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
 .empty-history h3 { color: #102a43; }
@@ -427,5 +501,6 @@ h2, h3, h4 { margin: 0; }
   .header { flex-direction: column; }
   .header-actions { width: 100%; justify-content: flex-start; }
   .header-actions .el-button { flex: 1; }
+  .plan-metrics { grid-template-columns: 1fr; }
 }
 </style>

@@ -1,11 +1,10 @@
 <template>
-  <div class="packages glass-card">
-    <div class="header">
+  <div class="packages page-shell">
+    <section class="section-card header">
       <div class="header-text">
-        <h2>包裹流转演示</h2>
-        <p class="header-note">
-          当前页面展示的包裹和定位为演示数据，用来讲解调度流程。随机坐标不会同步到生产系统。
-        </p>
+        <span class="eyebrow">包裹数据</span>
+        <h1>查看和补充演示包裹。</h1>
+        <p class="header-note">演示样本仅用于流程演练。</p>
       </div>
       <div class="actions">
         <div class="action-field">
@@ -25,18 +24,25 @@
           <el-button type="primary" @click="dialogVisible = true">录入示例包裹</el-button>
         </div>
       </div>
-    </div>
-    <el-table :data="filteredPackages" style="margin-top: 20px">
-      <el-table-column prop="tracking_number" label="快递单号" width="180" />
-      <el-table-column prop="recipient_name" label="收件人" width="120" />
-      <el-table-column prop="recipient_address" label="收件地址" show-overflow-tooltip />
-      <el-table-column prop="status" label="状态" width="120">
-        <template #default="{ row }">
-          <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
-        </template>
-      </el-table-column>
-    </el-table>
-    <p class="table-note">表格内数据来自演示录入或后端历史记录，仅用于演练流程。</p>
+    </section>
+
+    <section class="section-card table-card">
+      <header class="table-head">
+        <h2>包裹列表</h2>
+        <p class="table-note">当前显示演示录入和后端记录。</p>
+      </header>
+
+      <el-table :data="filteredPackages">
+        <el-table-column prop="tracking_number" label="快递单号" width="180" />
+        <el-table-column prop="recipient_name" label="收件人" width="120" />
+        <el-table-column prop="recipient_address" label="收件地址" show-overflow-tooltip />
+        <el-table-column prop="status" label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="getStatusType(row.status)">{{ getStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+    </section>
 
     <el-dialog
       v-model="dialogVisible"
@@ -46,9 +52,6 @@
       destroy-on-close
     >
       <el-form :model="form" label-width="100px">
-        <p class="form-note">
-          该表单仅模拟入库动作，坐标和体积重量均为示例数据，可手动调整。
-        </p>
         <el-form-item label="快递单号">
           <el-input v-model="form.tracking_number" placeholder="扫描或输入单号" />
           <el-button type="text" @click="generateTracking">生成单号</el-button>
@@ -77,6 +80,7 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
+          <span class="dialog-hint">提交后会自动补齐演示坐标。</span>
           <el-button @click="dialogVisible = false">取消</el-button>
           <el-button type="primary" @click="handleAdd">入库</el-button>
         </span>
@@ -177,12 +181,10 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.glass-card {
-  background: rgba(255,255,255,0.9);
-  backdrop-filter: blur(20px);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+.packages {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .header {
@@ -190,28 +192,39 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: flex-start;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 0.75rem;
 }
 
-.header h2 {
+.eyebrow {
+  display: inline-flex;
+  margin-bottom: 0.75rem;
+  color: #486581;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.header h1 {
   margin: 0;
+  color: #102a43;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
 }
 
 .header-text {
-  max-width: 480px;
+  max-width: 32rem;
 }
 
 .header-note {
-  margin: 6px 0 0;
-  color: #4a5568;
-  font-size: 14px;
-  line-height: 1.4;
+  margin: 0.35rem 0 0;
+  color: #52606d;
+  line-height: 1.5;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 0.75rem;
   align-items: center;
 }
 
@@ -229,25 +242,57 @@ onBeforeUnmount(() => {
   width: 100%;
 }
 
-.table-note {
-  margin-top: 12px;
-  color: #4a5568;
-  font-size: 13px;
+.table-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.form-note {
-  font-size: 13px;
-  color: #4a5568;
-  margin-bottom: 12px;
+.table-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.table-head h2 {
+  margin: 0;
+  color: #102a43;
+  font-size: 1.1rem;
+}
+
+.table-note {
+  margin: 0;
+  color: #6b7f92;
+  font-size: 0.82rem;
 }
 
 .package-dialog .el-dialog {
   max-width: 480px;
 }
 
+.dialog-footer {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.dialog-hint {
+  color: #6b7f92;
+  font-size: 0.82rem;
+}
+
 @media (max-width: 640px) {
   .header {
     flex-direction: column;
+  }
+
+  .table-head,
+  .dialog-footer {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .action-field {

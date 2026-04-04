@@ -3,8 +3,8 @@
     <div class="auth-card">
       <div class="card-header">
         <p class="eyebrow">配送调度访问</p>
-        <h1>创建账号</h1>
-        <p class="description">准备进入调度操作，先完成账号设置</p>
+        <h1>注册</h1>
+        <p class="description">创建账号后进入调度台。</p>
       </div>
 
       <el-form :model="form" class="auth-form">
@@ -50,7 +50,7 @@
           @click="handleRegister"
           class="auth-button"
         >
-          <span v-if="!loading">完成注册并进入调度</span>
+          <span v-if="!loading">注册</span>
           <span v-else>注册中...</span>
         </el-button>
       </el-form>
@@ -145,11 +145,11 @@ const handleRegister = async () => {
 
 .auth-card {
   width: min(420px, calc(100% - 32px));
-  padding: clamp(24px, 5vw, 40px);
-  background: #ffffff;
+  padding: clamp(24px, 5vw, 36px);
+  background: var(--auth-surface);
   border-radius: 16px;
-  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.08);
-  border: 1px solid #e2e8f0;
+  box-shadow: var(--auth-shadow);
+  border: 1px solid var(--auth-border);
 }
 
 .card-header {
@@ -176,6 +176,7 @@ h1 {
   margin: 0;
   font-size: 14px;
   color: #475569;
+  line-height: 1.5;
 }
 
 .auth-form {

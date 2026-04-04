@@ -10,8 +10,8 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 def build_sqlite_database_uri(database_file: str) -> str:
     database_path = Path(database_file).expanduser()
     if not database_path.is_absolute():
-        database_path = BACKEND_DIR / database_path
-    return f"sqlite:///{database_path.resolve().as_posix()}"
+        database_path = (BACKEND_DIR / database_path).resolve()
+    return f"sqlite:///{database_path.as_posix()}"
 
 
 class Settings(BaseSettings):

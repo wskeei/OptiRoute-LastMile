@@ -1,7 +1,7 @@
 export interface NavItem {
   path: string
   label: string
-  description: string
+  description?: string
   icon: 'Cpu' | 'Location' | 'Clock' | 'HomeFilled' | 'Box' | 'User' | 'TrendCharts' | 'Setting'
 }
 
@@ -18,55 +18,56 @@ export const AUTH_REDIRECT_ROUTE = PRIMARY_ROUTE
 
 export const PRODUCT_NAME = '末端配送调度演示系统'
 export const PRODUCT_ENVIRONMENT_LABEL = '演示环境'
-export const PRODUCT_SUMMARY = '用于展示调度、路线生成和结果复盘的前端演示环境。'
+export const PRODUCT_SUMMARY = '调度、监控与复盘演示。'
+export const PRODUCT_ENVIRONMENT_NOTE = '演示数据与估算结果会单独标注。'
 
 export const NAV_ITEMS: NavItem[] = [
   {
     path: '/dispatch',
     label: '调度中心',
-    description: '重置样本数据并发起一次调度',
+    description: '发起调度',
     icon: 'Cpu'
   },
   {
     path: '/monitor',
     label: '路线监控',
-    description: '查看最近一次调度的路线与配送进度',
+    description: '查看结果',
     icon: 'Location'
   },
   {
     path: '/history',
     label: '调度历史',
-    description: '复盘历史计划与路线详情',
+    description: '复盘记录',
     icon: 'Clock'
   },
   {
     path: '/dashboard',
     label: '任务概览',
-    description: '查看当前演示环境与下一步建议',
+    description: '查看概览',
     icon: 'HomeFilled'
   },
   {
     path: '/packages',
     label: '包裹数据',
-    description: '查看或补充演示包裹样本',
+    description: '查看样本',
     icon: 'Box'
   },
   {
     path: '/couriers',
     label: '快递员数据',
-    description: '查看可参与调度的快递员样本',
+    description: '查看人员',
     icon: 'User'
   },
   {
     path: '/analytics',
     label: '运营分析',
-    description: '区分实际统计与演示估算',
+    description: '查看估算',
     icon: 'TrendCharts'
   },
   {
     path: '/settings',
     label: '系统说明',
-    description: '查看演示环境规则与数据维护入口',
+    description: '维护说明',
     icon: 'Setting'
   }
 ]
@@ -82,19 +83,19 @@ export const SECONDARY_NAV_ITEMS = NAV_ITEMS.filter((item) =>
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     title: '1. 重置演示数据',
-    description: '生成一批待调度包裹和可用快递员，确保本轮演示有样本可跑。',
+    description: '生成待调度样本。',
     actionLabel: '前往调度中心',
     path: '/dispatch'
   },
   {
     title: '2. 启动一次调度',
-    description: '创建计划并等待后端输出实际路线，地图和历史页会基于该结果更新。',
+    description: '发起调度并等待结果。',
     actionLabel: '开始调度',
     path: '/dispatch'
   },
   {
     title: '3. 查看路线结果',
-    description: '在路线监控和历史页查看最新路线、配送进度和计划详情。',
+    description: '查看路线与进度。',
     actionLabel: '查看路线监控',
     path: '/monitor'
   }

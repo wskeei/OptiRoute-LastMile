@@ -3,40 +3,12 @@
     <section class="page-hero">
       <div>
         <span class="eyebrow">系统说明</span>
-        <h1>把当前演示环境的规则讲清楚。</h1>
-        <p class="page-summary">
-          这里不再假装提供真实调参入口，而是明确后端实际如何运行，并保留必要的数据维护动作。
-        </p>
+        <h1>说明当前演示如何运行。</h1>
+        <p class="page-summary">这里只保留会影响判断的规则和维护动作。</p>
       </div>
     </section>
 
     <section class="settings-grid">
-      <article class="section-card">
-        <header class="section-head">
-          <div>
-            <h2>调度运行方式</h2>
-            <p>以下说明对应当前后端实际行为。</p>
-          </div>
-        </header>
-
-        <ul class="note-list">
-          <li v-for="item in DISPATCH_TRUTH_NOTES" :key="item">{{ item }}</li>
-        </ul>
-      </article>
-
-      <article class="section-card">
-        <header class="section-head">
-          <div>
-            <h2>演示范围说明</h2>
-            <p>这些判断帮助使用者理解哪些是演示推导，哪些是事实。</p>
-          </div>
-        </header>
-
-        <ul class="note-list">
-          <li v-for="item in SETTINGS_TRUTH_NOTES" :key="item">{{ item }}</li>
-        </ul>
-      </article>
-
       <article class="section-card">
         <header class="section-head">
           <div>
@@ -78,7 +50,7 @@
           <div class="action-item">
             <div>
               <strong>重新初始化包裹样本</strong>
-              <p>清空现有包裹并重新生成 300 条上海样本数据。</p>
+              <p>清空当前包裹并重新生成演示样本。</p>
             </div>
             <el-button type="warning" @click="reinitPackages">重新初始化</el-button>
           </div>
@@ -86,10 +58,51 @@
           <div class="action-item">
             <div>
               <strong>清空调度历史</strong>
-              <p>删除所有历史计划与路线数据，并重置包裹/快递员状态。</p>
+              <p>删除历史计划与路线，并重置包裹和快递员状态。</p>
             </div>
             <el-button type="danger" @click="clearHistory">清空历史</el-button>
           </div>
+        </div>
+      </article>
+
+      <article class="section-card explanation-card">
+        <header class="section-head">
+          <div>
+            <h2>运行与演示边界</h2>
+            <p>需要时再展开详细说明。</p>
+          </div>
+        </header>
+
+        <div class="note-groups">
+          <section class="note-group">
+            <div class="note-group-head">
+              <div>
+                <h3>后端实际行为</h3>
+                <p>说明当前界面背后的真实运行方式。</p>
+              </div>
+              <button class="text-button" type="button" @click="truthOpen.dispatch = !truthOpen.dispatch">
+                {{ truthOpen.dispatch ? '收起说明' : '展开说明' }}
+              </button>
+            </div>
+            <ul v-if="truthOpen.dispatch" class="note-list">
+              <li v-for="item in DISPATCH_TRUTH_NOTES" :key="item">{{ item }}</li>
+            </ul>
+          </section>
+
+          <section class="note-group">
+            <div class="note-group-head">
+              <div>
+                <h3>演示推导范围</h3>
+                <p>说明哪些内容属于演示估算。</p>
+              </div>
+              <button class="text-button" type="button" @click="truthOpen.settings = !truthOpen.settings">
+                {{ truthOpen.settings ? '收起说明' : '展开说明' }}
+              </button>
+            </div>
+            <ul v-if="truthOpen.settings" class="note-list">
+              <li v-for="item in SETTINGS_TRUTH_NOTES" :key="item">{{ item }}</li>
+            </ul>
+          </section>
         </div>
       </article>
     </section>
@@ -104,6 +117,10 @@ import axios from 'axios'
 import { DISPATCH_TRUTH_NOTES, SETTINGS_TRUTH_NOTES } from '../lib/ux'
 
 const stats = ref({ totalPackages: 0, totalCouriers: 0, totalStations: 1, totalPlans: 0 })
+const truthOpen = ref({
+  dispatch: false,
+  settings: false
+})
 
 onMounted(() => {
   loadStats()
@@ -225,6 +242,46 @@ const clearHistory = async () => {
   line-height: 1.5;
 }
 
+.note-groups {
+  display: grid;
+  gap: 1rem;
+}
+
+.note-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.note-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.note-groups h3 {
+  margin: 0 0 0.65rem;
+  color: #102a43;
+  font-size: 0.95rem;
+}
+
+.note-group-head p {
+  margin: 0;
+  color: #6b7f92;
+  font-size: 0.82rem;
+}
+
+.text-button {
+  border: none;
+  background: transparent;
+  color: #184a68;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
 .note-list {
   margin: 0;
   padding-left: 1.2rem;
@@ -292,6 +349,10 @@ const clearHistory = async () => {
 }
 
 @media (max-width: 640px) {
+  .note-group-head {
+    flex-direction: column;
+  }
+
   .stats-grid {
     grid-template-columns: 1fr;
   }

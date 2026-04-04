@@ -4,6 +4,7 @@ import {
   AUTH_REDIRECT_ROUTE,
   DEFAULT_ROUTE,
   DISPATCH_TRUTH_NOTES,
+  PRODUCT_ENVIRONMENT_LABEL,
   NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
   SECONDARY_NAV_ITEMS,
@@ -49,10 +50,25 @@ describe('ux config', () => {
       '/dispatch',
       '/monitor'
     ])
+    expect(ONBOARDING_STEPS.map((step) => step.description)).toEqual([
+      '生成待调度样本。',
+      '发起调度并等待结果。',
+      '查看路线与进度。'
+    ])
   })
 
   it('contains explicit notes about which dispatch inputs are not backend controls', () => {
     expect(DISPATCH_TRUTH_NOTES.join(' ')).toContain('聚类数会根据当前可用快递员数量自动确定')
     expect(DISPATCH_TRUTH_NOTES.join(' ')).toContain('遗传算法迭代次数和种群规模使用后端固定配置')
+  })
+
+  it('keeps shared navigation copy short and scannable', () => {
+    expect(PRODUCT_ENVIRONMENT_LABEL).toBe('演示环境')
+    expect(PRIMARY_NAV_ITEMS.map((item) => item.description)).toEqual([
+      '发起调度',
+      '查看结果',
+      '复盘记录',
+      '查看概览'
+    ])
   })
 })

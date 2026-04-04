@@ -1,9 +1,10 @@
 <template>
-  <div class="realtime-map">
-    <div class="control-panel glass-card">
+  <div class="realtime-map page-shell">
+    <section class="control-panel section-card">
       <div class="panel-copy">
-        <h2>路线监控</h2>
-        <p>查看最近一次已完成调度的路线与配送进度。</p>
+        <span class="eyebrow">路线监控</span>
+        <h1>按步骤回放最近一次路线。</h1>
+        <p class="status-line">{{ statusMessage || '最近一次已完成调度已加载，可直接回放。' }}</p>
       </div>
       <div class="controls">
         <el-button type="primary" @click="nextStep" :disabled="!canStep">
@@ -11,19 +12,16 @@
         </el-button>
         <el-button @click="resetSimulation">重置</el-button>
       </div>
-    </div>
+    </section>
 
-    <el-alert v-if="statusMessage" type="info" :closable="false" show-icon :title="statusMessage">
-      如需看到路线结果，请先前往调度中心重置演示数据并启动一次调度。
-    </el-alert>
-
-    <div class="map-container glass-card">
+    <section class="map-container section-card">
       <div ref="mapRef" style="height: calc(100vh - 200px); border-radius: 12px; overflow: hidden;"></div>
-    </div>
+    </section>
 
-    <div class="info-panel glass-card">
+    <section class="info-panel section-card">
       <h3>配送进度</h3>
-      <div class="courier-list">
+      <p v-if="courierStatus.length === 0" class="panel-note">生成一条路线结果后，这里会显示快递员回放进度。</p>
+      <div v-else class="courier-list">
         <div v-for="courier in courierStatus" :key="courier.id" class="courier-item">
           <div class="courier-name" :style="{ color: courier.color }">
             {{ courier.name }}
@@ -33,7 +31,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </section>
   </div>
 </template>
 
@@ -42,7 +40,6 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet-ant-path'
-import { ElMessage } from 'element-plus'
 import { getLatestCompletedPlan } from '../lib/analytics'
 
 const mapRef = ref()
@@ -85,7 +82,6 @@ const loadLatestDispatch = async () => {
     const planRes = await axios.get('/api/v1/dispatch/plans')
     if (planRes.data.length === 0) {
       statusMessage.value = '还没有可用于监控的调度计划'
-      ElMessage.warning('暂无调度计划')
       return
     }
 
@@ -93,7 +89,6 @@ const loadLatestDispatch = async () => {
     
     if (!latestPlan || !latestPlan.routes || latestPlan.routes.length === 0) {
       statusMessage.value = '最近一次调度还没有可展示的路线结果'
-      ElMessage.warning('最新计划没有路线数据')
       return
     }
 
@@ -103,7 +98,6 @@ const loadLatestDispatch = async () => {
   } catch (e) {
     console.error(e)
     statusMessage.value = '加载路线结果失败'
-    ElMessage.error('加载调度计划失败')
   }
 }
 
@@ -255,10 +249,6 @@ const nextStep = () => {
   })
 
   drawCouriers()
-
-  if (!canStep.value) {
-    ElMessage.success('所有包裹配送完成')
-  }
 }
 
 const resetSimulation = () => {
@@ -268,20 +258,20 @@ const resetSimulation = () => {
     courier.currentPos = [...stationCoord]
   })
   drawCouriers()
-  ElMessage.info('已重置到初始状态')
 }
 </script>
 
 <style scoped>
-.realtime-map { display: flex; flex-direction: column; gap: 20px; }
-.glass-card { background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-.control-panel { display: flex; justify-content: space-between; align-items: center; }
-.panel-copy h2 { margin: 0 0 4px; }
-.panel-copy p { margin: 0; color: #52606d; font-size: 14px; }
-.controls { display: flex; gap: 12px; }
-.info-panel h3 { margin: 0 0 16px 0; }
+.realtime-map { display: flex; flex-direction: column; gap: 1rem; }
+.control-panel { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; }
+.eyebrow { display: inline-flex; margin-bottom: 0.75rem; color: #486581; font-size: 0.82rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.panel-copy h1 { margin: 0; color: #102a43; font-size: clamp(1.8rem, 3vw, 2.4rem); }
+.status-line { margin: 0.4rem 0 0; color: #52606d; line-height: 1.5; max-width: 34rem; }
+.controls { display: flex; gap: 0.75rem; }
+.info-panel h3 { margin: 0 0 0.9rem; color: #102a43; }
+.panel-note { margin: 0; color: #52606d; line-height: 1.5; }
 .courier-list { display: flex; flex-direction: column; gap: 12px; }
-.courier-item { padding: 12px; background: rgba(102, 126, 234, 0.05); border-radius: 8px; }
+.courier-item { padding: 12px; background: rgba(247, 250, 252, 0.92); border-radius: 12px; border: 1px solid rgba(24, 74, 104, 0.08); }
 .courier-name { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
 .courier-progress { font-size: 14px; color: #718096; }
 

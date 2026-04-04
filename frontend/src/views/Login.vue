@@ -4,7 +4,7 @@
       <div class="card-header">
         <p class="eyebrow">配送调度访问</p>
         <h1>登录</h1>
-        <p class="description">使用企业账号进入调度控制入口</p>
+        <p class="description">使用账号进入调度台。</p>
       </div>
 
       <el-form :model="form" class="auth-form">
@@ -34,7 +34,7 @@
           @click="handleLogin"
           class="auth-button"
         >
-          <span v-if="!loading">登录并进入调度</span>
+          <span v-if="!loading">登录</span>
           <span v-else>登录中...</span>
         </el-button>
       </el-form>
@@ -120,11 +120,11 @@ const handleLogin = async () => {
 
 .auth-card {
   width: min(420px, calc(100% - 32px));
-  padding: clamp(24px, 5vw, 40px);
-  background: #ffffff;
+  padding: clamp(24px, 5vw, 36px);
+  background: var(--auth-surface);
   border-radius: 16px;
-  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.08);
-  border: 1px solid #e2e8f0;
+  box-shadow: var(--auth-shadow);
+  border: 1px solid var(--auth-border);
 }
 
 .card-header {
@@ -151,6 +151,7 @@ h1 {
   margin: 0;
   font-size: 14px;
   color: #475569;
+  line-height: 1.5;
 }
 
 .auth-form {
