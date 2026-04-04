@@ -1,35 +1,26 @@
 <template>
-  <div class="login-container">
-    <div class="background-decoration">
-      <div class="circle circle-1"></div>
-      <div class="circle circle-2"></div>
-      <div class="circle circle-3"></div>
-    </div>
-
-    <div class="login-card glass-card">
+  <div class="page-shell">
+    <div class="auth-card">
       <div class="card-header">
-        <div class="icon-wrapper">
-          <el-icon :size="48"><Lock /></el-icon>
-        </div>
-        <h1>欢迎回来</h1>
-        <p class="subtitle">登录 AI 智能配送调度系统</p>
+        <p class="eyebrow">配送调度访问</p>
+        <h1>登录</h1>
+        <p class="description">使用企业账号进入调度控制入口</p>
       </div>
 
-      <el-form :model="form" class="login-form">
-        <el-form-item>
+      <el-form :model="form" class="auth-form">
+        <el-form-item label="用户名" label-width="90px">
           <el-input
             v-model="form.username"
-            placeholder="用户名"
             size="large"
             :prefix-icon="User"
             clearable
+            @keyup.enter="handleLogin"
           />
         </el-form-item>
-        <el-form-item>
+        <el-form-item label="密码" label-width="90px">
           <el-input
             v-model="form.password"
             type="password"
-            placeholder="密码"
             size="large"
             :prefix-icon="Lock"
             show-password
@@ -41,16 +32,26 @@
           size="large"
           :loading="loading"
           @click="handleLogin"
-          class="login-button"
+          class="auth-button"
         >
-          <span v-if="!loading">立即登录</span>
+          <span v-if="!loading">登录并进入调度</span>
           <span v-else>登录中...</span>
         </el-button>
       </el-form>
 
+      <div v-if="status.message" class="status-zone">
+        <el-alert
+          :title="status.message"
+          :type="status.type || 'info'"
+          show-icon
+          :closable="false"
+          class="status-alert"
+        />
+      </div>
+
       <div class="footer">
         <span>还没有账号？</span>
-        <router-link to="/register" class="link">立即注册</router-link>
+        <router-link to="/register" class="link">前往注册</router-link>
       </div>
     </div>
   </div>
@@ -60,7 +61,6 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -72,20 +72,36 @@ const form = ref({
 })
 
 const loading = ref(false)
+const status = ref<{ type: '' | 'success' | 'error'; message: string }>({
+  type: '',
+  message: ''
+})
+
+const clearStatus = () => {
+  status.value = { type: '', message: '' }
+}
+
+const setStatus = (type: 'success' | 'error', message: string) => {
+  status.value = { type, message }
+}
 
 const handleLogin = async () => {
+  clearStatus()
   if (!form.value.username || !form.value.password) {
-    ElMessage.warning('请输入用户名和密码')
+    setStatus('error', '请输入用户名和密码')
     return
   }
 
   loading.value = true
   try {
     await authStore.login(form.value.username, form.value.password)
-    ElMessage.success('登录成功！欢迎回来')
-    router.push('/dashboard')
+    setStatus('success', '登录成功，正在引导您进入调度')
+    await router.push('/dispatch')
   } catch (error: any) {
-    ElMessage.error(error.response?.data?.detail || '登录失败，请检查用户名和密码')
+    setStatus(
+      'error',
+      error.response?.data?.detail || '登录失败，请检查用户名与密码是否正确'
+    )
   } finally {
     loading.value = false
   }
@@ -93,182 +109,99 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-container {
+.page-shell {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  position: relative;
-  overflow: hidden;
+  background: #eef1f6;
+  padding: 40px 16px;
 }
 
-.background-decoration {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.circle {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  animation: float 20s infinite ease-in-out;
-}
-
-.circle-1 {
-  width: 300px;
-  height: 300px;
-  top: -100px;
-  left: -100px;
-  animation-delay: 0s;
-}
-
-.circle-2 {
-  width: 200px;
-  height: 200px;
-  bottom: -50px;
-  right: -50px;
-  animation-delay: 5s;
-}
-
-.circle-3 {
-  width: 150px;
-  height: 150px;
-  top: 50%;
-  right: 10%;
-  animation-delay: 10s;
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-30px) scale(1.1); }
-}
-
-.login-card {
-  width: 440px;
-  padding: 48px;
-  position: relative;
-  z-index: 1;
-  animation: slideUp 0.6s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(30px);
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+.auth-card {
+  width: min(420px, calc(100% - 32px));
+  padding: clamp(24px, 5vw, 40px);
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 15px 30px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
 }
 
 .card-header {
   text-align: center;
-  margin-bottom: 36px;
+  margin-bottom: 24px;
 }
 
-.icon-wrapper {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 20px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+.eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  color: #475569;
+  text-transform: uppercase;
 }
 
 h1 {
-  margin: 0 0 12px 0;
-  font-size: 32px;
-  font-weight: 700;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.5px;
+  margin: 8px 0 4px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
-.subtitle {
+.description {
   margin: 0;
-  color: #718096;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
+  color: #475569;
 }
 
-.login-form {
-  margin-bottom: 28px;
+.auth-form {
+  margin-bottom: 16px;
 }
 
 .el-form-item {
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 :deep(.el-input__wrapper) {
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: all 0.3s;
+  border-radius: 10px;
+  border-color: #cbd5f5;
 }
 
 :deep(.el-input__wrapper:hover) {
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  border-color: #94a3b8;
 }
 
 :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.25);
+  border-color: #475569;
+  box-shadow: 0 0 0 2px rgba(71, 85, 105, 0.12);
 }
 
-.login-button {
+.auth-button {
   width: 100%;
   height: 48px;
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 16px;
   font-weight: 600;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: #0f172a;
   border: none;
-  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
-  transition: all 0.3s;
 }
 
-.login-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(102, 126, 234, 0.4);
+.status-zone {
+  margin-bottom: 16px;
 }
 
-.login-button:active {
-  transform: translateY(0);
+.status-alert {
+  font-size: 14px;
 }
 
 .footer {
   text-align: center;
-  font-size: 15px;
-  color: #718096;
-  padding-top: 24px;
-  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  font-size: 14px;
+  color: #475569;
 }
 
 .link {
-  color: #667eea;
-  text-decoration: none;
-  margin-left: 8px;
+  color: #0f172a;
   font-weight: 600;
-  transition: all 0.3s;
-}
-
-.link:hover {
-  color: #764ba2;
-  text-decoration: underline;
+  margin-left: 6px;
 }
 </style>
