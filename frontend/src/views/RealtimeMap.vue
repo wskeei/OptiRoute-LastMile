@@ -1,21 +1,28 @@
 <template>
   <div class="realtime-map">
     <div class="control-panel glass-card">
-      <h2>🗺️ 实时监控地图</h2>
+      <div class="panel-copy">
+        <h2>路线监控</h2>
+        <p>查看最近一次已完成调度的路线与配送进度。</p>
+      </div>
       <div class="controls">
         <el-button type="primary" @click="nextStep" :disabled="!canStep">
-          ▶️ 下一步 ({{ currentStep }}/{{ totalSteps }})
+          下一步 ({{ currentStep }}/{{ totalSteps }})
         </el-button>
-        <el-button @click="resetSimulation">🔄 重置</el-button>
+        <el-button @click="resetSimulation">重置</el-button>
       </div>
     </div>
+
+    <el-alert v-if="statusMessage" type="info" :closable="false" show-icon :title="statusMessage">
+      如需看到路线结果，请先前往调度中心重置演示数据并启动一次调度。
+    </el-alert>
 
     <div class="map-container glass-card">
       <div ref="mapRef" style="height: calc(100vh - 200px); border-radius: 12px; overflow: hidden;"></div>
     </div>
 
     <div class="info-panel glass-card">
-      <h3>📊 配送进度</h3>
+      <h3>配送进度</h3>
       <div class="courier-list">
         <div v-for="courier in courierStatus" :key="courier.id" class="courier-item">
           <div class="courier-name" :style="{ color: courier.color }">
@@ -42,6 +49,7 @@ let map: any = null
 const routes = ref<any[]>([])
 const courierStatus = ref<any[]>([])
 const currentStep = ref(0)
+const statusMessage = ref('')
 let courierMarkers: any[] = [] // Non-reactive to prevent Leaflet proxy issues
 type GeoJsonCoord = [number, number]
 
@@ -75,6 +83,7 @@ const loadLatestDispatch = async () => {
   try {
     const planRes = await axios.get('/api/v1/dispatch/plans')
     if (planRes.data.length === 0) {
+      statusMessage.value = '还没有可用于监控的调度计划'
       ElMessage.warning('暂无调度计划')
       return
     }
@@ -84,14 +93,17 @@ const loadLatestDispatch = async () => {
     const latestPlan = sortedPlans.find((p: any) => p.status === 'READY')
     
     if (!latestPlan || !latestPlan.routes || latestPlan.routes.length === 0) {
+      statusMessage.value = '最近一次调度还没有可展示的路线结果'
       ElMessage.warning('最新计划没有路线数据')
       return
     }
 
+    statusMessage.value = ''
     routes.value = latestPlan.routes
     initializeSimulation()
   } catch (e) {
     console.error(e)
+    statusMessage.value = '加载路线结果失败'
     ElMessage.error('加载调度计划失败')
   }
 }
@@ -246,7 +258,7 @@ const nextStep = () => {
   drawCouriers()
 
   if (!canStep.value) {
-    ElMessage.success('🎉 所有包裹配送完成！')
+    ElMessage.success('所有包裹配送完成')
   }
 }
 
@@ -265,7 +277,8 @@ const resetSimulation = () => {
 .realtime-map { display: flex; flex-direction: column; gap: 20px; }
 .glass-card { background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
 .control-panel { display: flex; justify-content: space-between; align-items: center; }
-.control-panel h2 { margin: 0; }
+.panel-copy h2 { margin: 0 0 4px; }
+.panel-copy p { margin: 0; color: #52606d; font-size: 14px; }
 .controls { display: flex; gap: 12px; }
 .info-panel h3 { margin: 0 0 16px 0; }
 .courier-list { display: flex; flex-direction: column; gap: 12px; }
@@ -300,5 +313,17 @@ const resetSimulation = () => {
 :deep(.courier-marker-inner:hover) {
   z-index: 1000;
   transform: translate(-50%, -50%) scale(1.1);
+}
+
+@media (max-width: 640px) {
+  .control-panel {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .controls {
+    width: 100%;
+    flex-wrap: wrap;
+  }
 }
 </style>

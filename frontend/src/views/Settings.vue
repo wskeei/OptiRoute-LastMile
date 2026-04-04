@@ -1,130 +1,113 @@
 <template>
-  <div class="settings">
-    <div class="glass-card header">
-      <h2>⚙️ 系统设置</h2>
-    </div>
-
-    <div class="settings-grid">
-      <div class="glass-card">
-        <h3>🧠 算法默认参数</h3>
-        <div class="param-section">
-          <div class="param-group">
-            <div class="param-label">K-Means 聚类数 K</div>
-            <el-slider v-model="config.k" :min="2" :max="10" show-stops />
-            <div class="param-value">{{ config.k }}</div>
-          </div>
-          <div class="param-group">
-            <div class="param-label">遗传算法代数</div>
-            <el-slider v-model="config.generations" :min="100" :max="1000" :step="100" show-stops />
-            <div class="param-value">{{ config.generations }}</div>
-          </div>
-          <div class="param-group">
-            <div class="param-label">种群大小</div>
-            <el-slider v-model="config.populationSize" :min="50" :max="200" :step="10" show-stops />
-            <div class="param-value">{{ config.populationSize }}</div>
-          </div>
-        </div>
-        <div class="action-buttons">
-          <el-button type="primary" @click="saveConfig">💾 保存配置</el-button>
-          <el-button @click="resetConfig">🔄 恢复默认</el-button>
-        </div>
+  <div class="settings page-shell">
+    <section class="page-hero">
+      <div>
+        <span class="eyebrow">系统说明</span>
+        <h1>把当前演示环境的规则讲清楚。</h1>
+        <p class="page-summary">
+          这里不再假装提供真实调参入口，而是明确后端实际如何运行，并保留必要的数据维护动作。
+        </p>
       </div>
+    </section>
 
-      <div class="glass-card">
-        <h3>📊 系统数据统计</h3>
+    <section class="settings-grid">
+      <article class="section-card">
+        <header class="section-head">
+          <div>
+            <h2>调度运行方式</h2>
+            <p>以下说明对应当前后端实际行为。</p>
+          </div>
+        </header>
+
+        <ul class="note-list">
+          <li v-for="item in DISPATCH_TRUTH_NOTES" :key="item">{{ item }}</li>
+        </ul>
+      </article>
+
+      <article class="section-card">
+        <header class="section-head">
+          <div>
+            <h2>演示范围说明</h2>
+            <p>这些判断帮助使用者理解哪些是演示推导，哪些是事实。</p>
+          </div>
+        </header>
+
+        <ul class="note-list">
+          <li v-for="item in SETTINGS_TRUTH_NOTES" :key="item">{{ item }}</li>
+        </ul>
+      </article>
+
+      <article class="section-card">
+        <header class="section-head">
+          <div>
+            <h2>当前数据概览</h2>
+            <p>来自接口的实际样本数量。</p>
+          </div>
+          <el-button @click="loadStats">刷新数据</el-button>
+        </header>
+
         <div class="stats-grid">
           <div class="stat-item">
-            <div class="stat-label">数据库包裹总数</div>
-            <div class="stat-value">{{ stats.totalPackages }}</div>
+            <span>包裹总数</span>
+            <strong>{{ stats.totalPackages }}</strong>
           </div>
           <div class="stat-item">
-            <div class="stat-label">快递员总数</div>
-            <div class="stat-value">{{ stats.totalCouriers }}</div>
+            <span>快递员总数</span>
+            <strong>{{ stats.totalCouriers }}</strong>
           </div>
           <div class="stat-item">
-            <div class="stat-label">配送站点数</div>
-            <div class="stat-value">{{ stats.totalStations }}</div>
+            <span>配送站点数</span>
+            <strong>{{ stats.totalStations }}</strong>
           </div>
           <div class="stat-item">
-            <div class="stat-label">历史调度次数</div>
-            <div class="stat-value">{{ stats.totalPlans }}</div>
+            <span>历史计划数</span>
+            <strong>{{ stats.totalPlans }}</strong>
           </div>
         </div>
-        <el-button @click="loadStats" style="margin-top: 16px">🔄 刷新统计</el-button>
-      </div>
+      </article>
 
-      <div class="glass-card">
-        <h3>🗄️ 数据管理</h3>
-        <div class="data-actions">
-          <div class="action-item">
-            <div class="action-desc">
-              <div class="action-title">重新初始化包裹数据</div>
-              <div class="action-subtitle">清空现有包裹，重新生成300个上海地点包裹</div>
-            </div>
-            <el-button type="warning" @click="reinitPackages">🔄 重新初始化</el-button>
+      <article class="section-card">
+        <header class="section-head">
+          <div>
+            <h2>数据维护</h2>
+            <p>保留明确、可解释的重置动作。</p>
           </div>
-          <div class="action-item">
-            <div class="action-desc">
-              <div class="action-title">清空调度历史</div>
-              <div class="action-subtitle">删除所有历史调度计划和路线数据</div>
-            </div>
-            <el-button type="danger" @click="clearHistory">🗑️ 清空历史</el-button>
-          </div>
-        </div>
-      </div>
+        </header>
 
-      <div class="glass-card">
-        <h3>ℹ️ 系统信息</h3>
-        <div class="info-list">
-          <div class="info-item">
-            <span class="info-label">系统版本</span>
-            <span class="info-value">v1.0.0</span>
+        <div class="action-list">
+          <div class="action-item">
+            <div>
+              <strong>重新初始化包裹样本</strong>
+              <p>清空现有包裹并重新生成 300 条上海样本数据。</p>
+            </div>
+            <el-button type="warning" @click="reinitPackages">重新初始化</el-button>
           </div>
-          <div class="info-item">
-            <span class="info-label">后端框架</span>
-            <span class="info-value">FastAPI + Python 3.11</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">前端框架</span>
-            <span class="info-value">Vue 3 + TypeScript</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">算法实现</span>
-            <span class="info-value">K-Means + 遗传算法</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">数据库</span>
-            <span class="info-value">SQLite</span>
+
+          <div class="action-item">
+            <div>
+              <strong>清空调度历史</strong>
+              <p>删除所有历史计划与路线数据，并重置包裹/快递员状态。</p>
+            </div>
+            <el-button type="danger" @click="clearHistory">清空历史</el-button>
           </div>
         </div>
-      </div>
-    </div>
+      </article>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
-const config = ref({ k: 5, generations: 500, populationSize: 100 })
+import { DISPATCH_TRUTH_NOTES, SETTINGS_TRUTH_NOTES } from '../lib/ux'
+
 const stats = ref({ totalPackages: 0, totalCouriers: 0, totalStations: 1, totalPlans: 0 })
 
 onMounted(() => {
-  const saved = localStorage.getItem('algorithmConfig')
-  if (saved) config.value = JSON.parse(saved)
   loadStats()
 })
-
-const saveConfig = () => {
-  localStorage.setItem('algorithmConfig', JSON.stringify(config.value))
-  ElMessage.success('算法默认参数已保存')
-}
-
-const resetConfig = () => {
-  config.value = { k: 5, generations: 500, populationSize: 100 }
-  ElMessage.success('已恢复默认配置')
-}
 
 const loadStats = async () => {
   try {
@@ -136,77 +119,186 @@ const loadStats = async () => {
     stats.value.totalPackages = packagesRes.data.length
     stats.value.totalCouriers = couriersRes.data.length
     stats.value.totalPlans = plansRes.data.length
-  } catch (e) {
-    console.error(e)
+  } catch (error) {
+    console.error(error)
   }
 }
 
 const reinitPackages = async () => {
   try {
-    await ElMessageBox.confirm('确定要重新初始化包裹数据吗？这将清空现有包裹并重新生成300个包裹。', '确认操作', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    ElMessage.info('正在重新初始化包裹数据...')
+    await ElMessageBox.confirm(
+      '确定要重新初始化包裹样本吗？这会清空当前包裹并重新生成演示数据。',
+      '确认操作',
+      {
+        confirmButtonText: '重新初始化',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    ElMessage.info('正在重新初始化包裹样本...')
     await axios.post('/api/v1/delivery/packages/reinit')
     await loadStats()
-    ElMessage.success('包裹数据已重新初始化')
-  } catch (e: any) {
-    if (e !== 'cancel') {
-      ElMessage.error(e.response?.data?.detail || '初始化失败')
+    ElMessage.success('包裹样本已重新初始化')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.detail || '初始化失败')
     }
   }
 }
 
 const clearHistory = async () => {
   try {
-    await ElMessageBox.confirm('确定要清空所有调度历史吗？此操作不可恢复。', '确认操作', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
+    await ElMessageBox.confirm(
+      '确定要清空所有调度历史吗？此操作不可恢复。',
+      '确认操作',
+      {
+        confirmButtonText: '清空历史',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
     ElMessage.info('正在清空调度历史...')
     await axios.delete('/api/v1/dispatch/plans/all')
     await loadStats()
     ElMessage.success('调度历史已清空')
-  } catch (e: any) {
-    if (e !== 'cancel') {
-      ElMessage.error(e.response?.data?.detail || '清空失败')
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.detail || '清空失败')
     }
   }
 }
 </script>
 
 <style scoped>
-.settings { display: flex; flex-direction: column; gap: 20px; }
-.glass-card { background: rgba(255,255,255,0.9); backdrop-filter: blur(20px); border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-h2, h3 { margin: 0; margin-bottom: 20px; }
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
-.header { display: flex; justify-content: space-between; align-items: center; }
+.page-hero h1 {
+  margin: 0 0 0.5rem;
+  color: #102a43;
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+}
 
-.settings-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.eyebrow {
+  display: inline-flex;
+  margin-bottom: 0.75rem;
+  color: #486581;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
-.param-section { display: flex; flex-direction: column; gap: 20px; margin-bottom: 20px; }
-.param-group { display: flex; flex-direction: column; gap: 8px; }
-.param-label { font-size: 14px; color: #718096; font-weight: 500; }
-.param-value { text-align: center; font-size: 18px; font-weight: bold; color: #667eea; margin-top: 4px; }
+.page-summary {
+  margin: 0;
+  max-width: 42rem;
+  color: #52606d;
+  line-height: 1.6;
+}
 
-.action-buttons { display: flex; gap: 12px; }
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
 
-.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
-.stat-item { text-align: center; padding: 16px; background: rgba(102, 126, 234, 0.05); border-radius: 8px; }
-.stat-label { font-size: 13px; color: #718096; margin-bottom: 8px; }
-.stat-value { font-size: 28px; font-weight: bold; color: #667eea; }
+.section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
 
-.data-actions { display: flex; flex-direction: column; gap: 16px; }
-.action-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: rgba(102, 126, 234, 0.03); border-radius: 8px; }
-.action-desc { flex: 1; }
-.action-title { font-size: 15px; font-weight: 500; color: #2d3748; margin-bottom: 4px; }
-.action-subtitle { font-size: 13px; color: #718096; }
+.section-head h2 {
+  margin: 0 0 0.25rem;
+  color: #102a43;
+  font-size: 1.1rem;
+}
 
-.info-list { display: flex; flex-direction: column; gap: 12px; }
-.info-item { display: flex; justify-content: space-between; padding: 12px; background: rgba(102, 126, 234, 0.03); border-radius: 6px; }
-.info-label { font-size: 14px; color: #718096; }
-.info-value { font-size: 14px; font-weight: 500; color: #2d3748; }
+.section-head p {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.5;
+}
+
+.note-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #243b53;
+  line-height: 1.7;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(224, 232, 240, 0.45);
+}
+
+.stat-item span {
+  color: #486581;
+  font-size: 0.88rem;
+}
+
+.stat-item strong {
+  color: #102a43;
+  font-size: 1.85rem;
+}
+
+.action-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.action-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: rgba(247, 250, 252, 0.92);
+  border: 1px solid rgba(24, 74, 104, 0.08);
+}
+
+.action-item strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: #102a43;
+}
+
+.action-item p {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
 </style>
