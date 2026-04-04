@@ -43,7 +43,7 @@ import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet-ant-path'
 import { ElMessage } from 'element-plus'
-import { sortPlansByNewest } from '../lib/analytics'
+import { getLatestCompletedPlan } from '../lib/analytics'
 
 const mapRef = ref()
 let map: any = null
@@ -89,8 +89,7 @@ const loadLatestDispatch = async () => {
       return
     }
 
-    const sortedPlans = sortPlansByNewest(planRes.data)
-    const latestPlan = sortedPlans.find((p: any) => p.status === 'READY')
+    const latestPlan = getLatestCompletedPlan(planRes.data)
     
     if (!latestPlan || !latestPlan.routes || latestPlan.routes.length === 0) {
       statusMessage.value = '最近一次调度还没有可展示的路线结果'
