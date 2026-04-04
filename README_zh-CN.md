@@ -90,6 +90,39 @@ cd frontend
 npm install
 ```
 
+### Linux / 跨系统迁移说明
+
+如果这个仓库是从 Windows 机器直接拷贝到 Linux，不要复用原来的运行时产物：
+
+```bash
+# 后端：删除本地 SQLite 运行文件
+rm -f backend/sql_app.db backend/sql_app.db-shm backend/sql_app.db-wal
+
+# 前端：在 Linux 环境重新安装依赖
+rm -rf frontend/node_modules
+cd frontend && npm install
+```
+
+前端的 npm 脚本已经改为通过 `node` 直接调用本地 CLI，不再依赖源系统保留下来的可执行位。
+
+### 一键启动
+
+在仓库根目录下，可以直接使用内置脚本：
+
+```bash
+# 日常开发：重建数据库、执行迁移、初始化演示数据，并启动前后端
+bash scripts/dev-up.sh
+
+# 新机器首次启动：安装依赖、重建数据库、执行迁移、初始化数据，并启动全部服务
+bash scripts/bootstrap-and-up.sh
+```
+
+可选环境变量：
+
+```bash
+BACKEND_HOST=0.0.0.0 BACKEND_PORT=8000 FRONTEND_HOST=0.0.0.0 FRONTEND_PORT=5173 bash scripts/dev-up.sh
+```
+
 ## 🚀 运行应用程序
 
 1.  **启动后端服务器**：
@@ -138,7 +171,7 @@ npm install
 cd backend
 
 # 删除旧数据库
-rm sql_app.db
+rm -f sql_app.db sql_app.db-shm sql_app.db-wal
 
 # 重新创建正确的数据库结构
 uv run alembic upgrade head

@@ -87,6 +87,39 @@ cd frontend
 npm install
 ```
 
+### Linux / Cross-OS Migration Notes
+
+If this repository was copied from a Windows machine, do not reuse the runtime artifacts directly on Linux:
+
+```bash
+# Backend: reset the local SQLite runtime files
+rm -f backend/sql_app.db backend/sql_app.db-shm backend/sql_app.db-wal
+
+# Frontend: reinstall dependencies in the Linux environment
+rm -rf frontend/node_modules
+cd frontend && npm install
+```
+
+The frontend npm scripts call the local CLIs through `node`, so they no longer depend on executable bits preserved from the source OS.
+
+### One-Command Startup
+
+From the repository root, you can use the built-in startup scripts:
+
+```bash
+# Daily use: reset DB, run migrations, seed demo data, start backend + frontend
+bash scripts/dev-up.sh
+
+# First-time setup on a new machine: install deps, reset DB, migrate, seed, start all services
+bash scripts/bootstrap-and-up.sh
+```
+
+Optional environment variables:
+
+```bash
+BACKEND_HOST=0.0.0.0 BACKEND_PORT=8000 FRONTEND_HOST=0.0.0.0 FRONTEND_PORT=5173 bash scripts/dev-up.sh
+```
+
 ## 🚀 Running the Application
 
 1.  **Start the Backend Server**:
@@ -135,7 +168,7 @@ If you encounter database errors like `no such column` or `no such table`:
 cd backend
 
 # Remove old database
-rm sql_app.db
+rm -f sql_app.db sql_app.db-shm sql_app.db-wal
 
 # Re-create database with correct schema
 uv run alembic upgrade head
