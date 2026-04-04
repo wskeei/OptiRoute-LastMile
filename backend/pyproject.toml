@@ -33,3 +33,6 @@ dependencies = [
 
 [tool.setuptools]
 py-modules = ["backend_pytest"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

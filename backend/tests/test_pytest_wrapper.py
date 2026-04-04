@@ -1,4 +1,7 @@
+import os
+import subprocess
 import sys
+import tempfile
 
 import pytest
 
@@ -30,3 +33,16 @@ def test_main_execs_pytest_module(monkeypatch: pytest.MonkeyPatch):
         "executable": sys.executable,
         "argv": [sys.executable, "-m", "pytest", "-q"],
     }
+
+
+def test_installed_project_exposes_app_package_outside_backend_directory():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        completed = subprocess.run(
+            [sys.executable, "-c", "from app.main import app; print(app.title)"],
+            cwd=temp_dir,
+            env={**os.environ, "PYTHONPATH": ""},
+            capture_output=True,
+            text=True,
+        )
+
+    assert completed.returncode == 0, completed.stderr
