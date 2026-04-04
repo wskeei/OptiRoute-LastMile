@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import L from 'leaflet'
 
 import RealtimeMap from '../views/RealtimeMap.vue'
 
@@ -146,5 +147,111 @@ describe('RealtimeMap', () => {
     expect(wrapper.text()).toContain('还没有可用于监控的调度计划')
     expect(vi.mocked(ElMessage.warning)).not.toHaveBeenCalled()
     expect(vi.mocked(ElMessage.error)).not.toHaveBeenCalled()
+  })
+
+  it('creates courier markers with explicit icon geometry for leaflet positioning', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: [
+        {
+          id: 10,
+          created_at: '2026-04-04T10:00:00Z',
+          status: 'COMPLETED',
+          routes: [
+            {
+              courier_id: 1,
+              courier: { name: '完成计划快递员', max_capacity: 50 },
+              geo_json: {
+                color: '#184a68',
+                package_count: 1,
+                coordinates: [
+                  [121.4737, 31.2304],
+                  [121.48, 31.24],
+                  [121.4737, 31.2304]
+                ],
+                packages_ordered: [{ recipient_name: 'A', tracking_number: 'T1', weight: 1 }]
+              }
+            }
+          ]
+        }
+      ]
+    })
+
+    mount(RealtimeMap, {
+      global: {
+        stubs: {
+          'el-alert': AlertStub,
+          'el-button': ButtonStub
+        }
+      }
+    })
+
+    await flushPromises()
+
+    const courierIconCall = vi
+      .mocked(L.divIcon)
+      .mock.calls.map(([options]) => options)
+      .find((options) => options.className === 'custom-courier-icon')
+
+    expect(courierIconCall).toEqual(
+      expect.objectContaining({
+        iconSize: [96, 32],
+        iconAnchor: [48, 16]
+      })
+    )
+  })
+
+  it('creates numbered package markers with centered icon geometry', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: [
+        {
+          id: 10,
+          created_at: '2026-04-04T10:00:00Z',
+          status: 'COMPLETED',
+          routes: [
+            {
+              courier_id: 1,
+              courier: { name: '完成计划快递员', max_capacity: 50 },
+              geo_json: {
+                color: '#184a68',
+                package_count: 2,
+                coordinates: [
+                  [121.4737, 31.2304],
+                  [121.48, 31.24],
+                  [121.49, 31.25],
+                  [121.4737, 31.2304]
+                ],
+                packages_ordered: [
+                  { recipient_name: 'A', tracking_number: 'T1', weight: 1 },
+                  { recipient_name: 'B', tracking_number: 'T2', weight: 1 }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    })
+
+    mount(RealtimeMap, {
+      global: {
+        stubs: {
+          'el-alert': AlertStub,
+          'el-button': ButtonStub
+        }
+      }
+    })
+
+    await flushPromises()
+
+    const packageIconCall = vi
+      .mocked(L.divIcon)
+      .mock.calls.map(([options]) => options)
+      .find((options) => typeof options.html === 'string' && options.html.includes('>1</div>'))
+
+    expect(packageIconCall).toEqual(
+      expect.objectContaining({
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      })
+    )
   })
 })
