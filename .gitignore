@@ -84,6 +84,8 @@ frontend/package-lock.json
 .claude/
 tmpclaude-*
 **/tmpclaude-*
+.worktrees/
+worktrees/
 
 # Project documentation (local only)
 claude.md
