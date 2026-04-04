@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import axios from 'axios'
 import * as echarts from 'echarts'
 
@@ -196,6 +196,7 @@ const loadData = async () => {
     const completedPlans = getCompletedPlans(plans)
 
     summary.value = buildAnalyticsSummary({ plans, packages, couriers })
+    await nextTick()
 
     const latestRanking =
       completedPlans[0]?.routes
