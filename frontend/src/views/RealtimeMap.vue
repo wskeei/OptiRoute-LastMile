@@ -43,8 +43,12 @@ const routes = ref<any[]>([])
 const courierStatus = ref<any[]>([])
 const currentStep = ref(0)
 let courierMarkers: any[] = [] // Non-reactive to prevent Leaflet proxy issues
-const stationCoord = [31.2304, 121.4737]
+type GeoJsonCoord = [number, number]
+
+const stationCoord: L.LatLngTuple = [31.2304, 121.4737]
 const colors = ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea']
+
+const toLatLng = (coord: GeoJsonCoord): L.LatLngTuple => [coord[1], coord[0]]
 
 const totalSteps = computed(() => {
   return Math.max(...courierStatus.value.map(c => c.total), 0)
@@ -97,7 +101,7 @@ const drawRoutesAndPackages = () => {
     const color = route.geo_json?.color || colors[idx % colors.length]
 
     if (route.geo_json?.coordinates) {
-      const latlngs = route.geo_json.coordinates.map((c: any) => [c[1], c[0]])
+      const latlngs = route.geo_json.coordinates.map((c: GeoJsonCoord) => toLatLng(c))
       L.polyline(latlngs, { color, weight: 3, opacity: 0.4, dashArray: '5, 5' }).addTo(map)
     }
 
@@ -120,7 +124,7 @@ const drawRoutesAndPackages = () => {
           html: `<div style="background:${color};color:white;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">${pkgIdx + 1}</div>`,
           iconSize: [24, 24]
         })
-        const marker = L.marker([coord[1], coord[0]], { icon }).addTo(map)
+        const marker = L.marker(toLatLng(coord as GeoJsonCoord), { icon }).addTo(map)
         
         // Add detailed popup if data available
         if (pkgs[pkgIdx]) {
@@ -227,9 +231,9 @@ const nextStep = () => {
       // Valid path: Depot(0) -> Pkg1(1) ... PkgN(N) -> Depot(N+1)
       // Moving to: delivered + 1
       if (coords && coords.length > courier.delivered + 1) {
-        const nextCoord = coords[courier.delivered + 1]
+        const nextCoord = coords[courier.delivered + 1] as GeoJsonCoord
         // GeoJSON is [lon, lat], Leaflet needs [lat, lon]
-        courier.currentPos = [nextCoord[1], nextCoord[0]]
+        courier.currentPos = toLatLng(nextCoord)
         courier.delivered++
       } else {
         console.warn(`Missing coordinates for courier ${courier.name} at step ${courier.delivered}`)

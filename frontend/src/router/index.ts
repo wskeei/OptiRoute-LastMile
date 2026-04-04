@@ -72,7 +72,7 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore()
 
   // 如果路由需要认证且用户未登录，跳转到登录页

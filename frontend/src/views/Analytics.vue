@@ -130,17 +130,15 @@ const courierStatusChartRef = ref()
 
 const loadData = async () => {
   try {
-    const [plansRes, packagesRes, couriersRes, rankRes] = await Promise.all([
+    const [plansRes, packagesRes, couriersRes] = await Promise.all([
       axios.get('/api/v1/dispatch/plans'),
       axios.get('/api/v1/delivery/packages'),
-      axios.get('/api/v1/delivery/couriers'),
-      axios.get('/api/v1/stats/courier-ranking')
+      axios.get('/api/v1/delivery/couriers')
     ])
 
     const plans = plansRes.data.filter((p: any) => (p.status === 'READY' || p.status === 'COMPLETED') && p.routes?.length > 0)
     const packages = packagesRes.data
     const couriers = couriersRes.data
-    const ranking = rankRes.data
 
     // Restore stats calculation
     stats.value.totalPackages = packages.length
@@ -226,7 +224,7 @@ const initTrendChart = (plans: any[]) => {
   const dates = recentPlans.map((_, i) => `第${i + 1}次`)
   const distances = recentPlans.map(p => p.routes?.reduce((s: number, r: any) => s + (r.geo_json?.total_distance_km || 0), 0) || 0)
   const packages = recentPlans.map(p => p.routes?.reduce((s: number, r: any) => s + (r.geo_json?.package_count || 0), 0) || 0)
-  const avgDistances = recentPlans.map((p, i) => packages[i] > 0 ? (distances[i] / packages[i]).toFixed(2) : 0)
+  const avgDistances = recentPlans.map((_plan, i) => packages[i] > 0 ? (distances[i] / packages[i]).toFixed(2) : 0)
 
   chart.setOption({
     tooltip: { trigger: 'axis' },
