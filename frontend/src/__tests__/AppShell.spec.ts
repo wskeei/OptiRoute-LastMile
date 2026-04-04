@@ -1,0 +1,73 @@
+import { defineComponent, h } from 'vue'
+import { mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import App from '../App.vue'
+
+const routeState = { path: '/dispatch' }
+
+vi.mock('vue-router', () => ({
+  useRoute: () => routeState
+}))
+
+const RouterLinkStub = defineComponent({
+  props: {
+    to: {
+      type: String,
+      required: true
+    }
+  },
+  setup(props, { slots }) {
+    return () => h('a', { href: props.to }, slots.default?.())
+  }
+})
+
+const passthroughStub = (tag = 'div') =>
+  defineComponent({
+    setup(_, { slots }) {
+      return () => h(tag, slots.default?.())
+    }
+  })
+
+const mountApp = () => {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    writable: true,
+    value: 900
+  })
+
+  return mount(App, {
+    global: {
+      mocks: {
+        $route: routeState
+      },
+      stubs: {
+        'el-icon': passthroughStub(),
+        'router-link': RouterLinkStub,
+        'router-view': passthroughStub()
+      }
+    }
+  })
+}
+
+describe('App shell', () => {
+  beforeEach(() => {
+    routeState.path = '/dispatch'
+  })
+
+  it('keeps the core routes visible in compact navigation', () => {
+    const wrapper = mountApp()
+
+    expect(wrapper.find('a[href="/dispatch"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/monitor"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/history"]').exists()).toBe(true)
+    expect(wrapper.find('a[href="/dashboard"]').exists()).toBe(true)
+  })
+
+  it('does not render the removed shell summary copy', () => {
+    const wrapper = mountApp()
+
+    expect(wrapper.text()).not.toContain('先重置演示数据，再启动调度，然后查看路线结果。')
+    expect(wrapper.text()).not.toContain('主要操作保留在上方，分析和系统页面收纳在“更多页面”。')
+  })
+})

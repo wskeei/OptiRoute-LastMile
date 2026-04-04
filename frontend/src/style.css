@@ -7,13 +7,17 @@
   --shadow-soft: 0 20px 45px rgba(15, 23, 42, 0.08);
   --text-strong: #102a43;
   --text-muted: #52606d;
+  --text-subtle: #6b7f92;
   --text-soft: #486581;
+  --surface-raised: rgba(255, 255, 255, 0.98);
   --brand-strong: #184a68;
   --brand-soft: #1f6f8b;
   --brand-positive: #4c956c;
   --radius-xl: 1.5rem;
   --radius-lg: 1rem;
   --radius-md: 0.85rem;
+  --page-gap: 0.875rem;
+  --card-padding: 1.125rem;
 }
 
 * {
@@ -48,16 +52,26 @@ textarea {
 .page-shell {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--page-gap);
 }
 
 .section-card,
 .glass-card {
-  background: var(--bg-surface);
+  background: var(--surface-raised);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-soft);
-  padding: 1.25rem;
+  padding: var(--card-padding);
+}
+
+.section-card p,
+.glass-card p {
+  color: var(--text-muted);
+}
+
+.section-card small,
+.glass-card small {
+  color: var(--text-subtle);
 }
 
 .el-container,

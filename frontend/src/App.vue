@@ -24,10 +24,6 @@
         </button>
       </div>
 
-      <p v-show="!collapsed" class="sidebar-summary">
-        先重置演示数据，再启动调度，然后查看路线结果。
-      </p>
-
       <nav class="nav-list nav-primary" aria-label="主要导航">
         <router-link
           v-for="item in primaryNavItems"
@@ -41,7 +37,9 @@
           </el-icon>
           <span v-show="!collapsed" class="nav-copy">
             <span class="nav-label">{{ item.label }}</span>
-            <span class="nav-desc">{{ item.description }}</span>
+            <span v-if="showNavDescription(item.path, item.description)" class="nav-desc">
+              {{ item.description }}
+            </span>
           </span>
         </router-link>
 
@@ -56,7 +54,6 @@
           <el-icon class="nav-icon"><MoreFilled /></el-icon>
           <span class="nav-copy">
             <span class="nav-label">更多页面</span>
-            <span class="nav-desc">数据、分析与系统说明</span>
           </span>
         </button>
       </nav>
@@ -76,7 +73,9 @@
             </el-icon>
             <span v-show="!collapsed" class="nav-copy">
               <span class="nav-label">{{ item.label }}</span>
-              <span class="nav-desc">{{ item.description }}</span>
+              <span v-if="showNavDescription(item.path, item.description)" class="nav-desc">
+                {{ item.description }}
+              </span>
             </span>
           </router-link>
         </nav>
@@ -98,13 +97,12 @@
             </el-icon>
             <span class="nav-copy">
               <span class="nav-label">{{ item.label }}</span>
-              <span class="nav-desc">{{ item.description }}</span>
+              <span v-if="showNavDescription(item.path, item.description)" class="nav-desc">
+                {{ item.description }}
+              </span>
             </span>
           </router-link>
         </nav>
-      </section>
-      <section v-else class="mobile-summary section-card">
-        <p class="mobile-summary-text">主要操作保留在上方，分析和系统页面收纳在“更多页面”。</p>
       </section>
     </aside>
 
@@ -165,6 +163,9 @@ const secondaryNavItems = SECONDARY_NAV_ITEMS.map((item) => ({
 }))
 
 const isAuthPage = computed(() => route.path === '/login' || route.path === '/register')
+const isActiveRoute = (path: string) => route.path === path
+const showNavDescription = (path: string, description?: string) =>
+  Boolean(description) && !collapsed.value && isActiveRoute(path)
 
 const syncCompactNavigation = () => {
   if (typeof window === 'undefined') return
@@ -274,16 +275,6 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.sidebar-summary {
-  margin: 0;
-  padding: 0.875rem 1rem;
-  border-radius: 1rem;
-  background: rgba(224, 232, 240, 0.55);
-  color: #486581;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
 .nav-list {
   display: flex;
   flex-direction: column;
@@ -310,9 +301,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 0.875rem;
-  padding: 0.85rem 0.95rem;
+  padding: 0.8rem 0.95rem;
   border-radius: 1rem;
-  color: #243b53;
+  color: var(--text-strong);
   text-decoration: none;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
@@ -324,12 +315,12 @@ onBeforeUnmount(() => {
 }
 
 .nav-link.active {
-  background: #184a68;
+  background: var(--brand-strong);
   color: #f7fafc;
 }
 
 .nav-more {
-  border: 1px dashed rgba(24, 74, 104, 0.18);
+  border: 1px dashed rgba(24, 74, 104, 0.14);
   background: rgba(255, 255, 255, 0.8);
   text-align: left;
   cursor: pointer;
@@ -344,18 +335,22 @@ onBeforeUnmount(() => {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0.1rem;
 }
 
 .nav-label {
   font-weight: 600;
+  line-height: 1.25;
 }
 
 .nav-desc {
-  color: inherit;
-  opacity: 0.72;
-  font-size: 0.8rem;
+  color: var(--text-subtle);
+  font-size: 0.78rem;
   line-height: 1.35;
+}
+
+.nav-link.active .nav-desc {
+  color: rgba(247, 250, 252, 0.78);
 }
 
 .main-content {
@@ -363,16 +358,8 @@ onBeforeUnmount(() => {
   padding: 1.5rem;
 }
 
-.mobile-more,
-.mobile-summary {
+.mobile-more {
   display: none;
-}
-
-.mobile-summary-text {
-  margin: 0;
-  color: #52606d;
-  font-size: 0.9rem;
-  line-height: 1.5;
 }
 
 @media (max-width: 960px) {
@@ -390,10 +377,6 @@ onBeforeUnmount(() => {
     display: none;
   }
 
-  .sidebar-summary {
-    display: none;
-  }
-
   .nav-list {
     flex-direction: row;
     flex-wrap: wrap;
@@ -407,8 +390,7 @@ onBeforeUnmount(() => {
     padding: 1rem;
   }
 
-  .mobile-more,
-  .mobile-summary {
+  .mobile-more {
     display: block;
   }
 
