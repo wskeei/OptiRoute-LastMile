@@ -34,7 +34,7 @@
       </div>
     </section>
 
-    <el-dialog v-model="dialogVisible" title="添加快递员" width="30%">
+    <el-dialog v-model="dialogVisible" title="添加快递员" :width="dialogWidth">
       <el-form :model="form" label-width="80px">
         <el-form-item label="姓名">
           <el-input v-model="form.name" />
@@ -57,12 +57,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, onBeforeUnmount, reactive } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
 const couriers = ref<any[]>([])
 const dialogVisible = ref(false)
+const dialogWidth = ref('30rem')
 const form = reactive({
   name: '',
   phone: '',
@@ -91,8 +92,19 @@ const handleAdd = async () => {
   }
 }
 
+const syncDialogWidth = () => {
+  if (typeof window === 'undefined') return
+  dialogWidth.value = window.innerWidth <= 640 ? '90vw' : '30rem'
+}
+
 onMounted(() => {
+  syncDialogWidth()
+  window.addEventListener('resize', syncDialogWidth)
   fetchCouriers()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncDialogWidth)
 })
 </script>
 

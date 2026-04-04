@@ -40,7 +40,6 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet-ant-path'
-import { ElMessage } from 'element-plus'
 import { getLatestCompletedPlan } from '../lib/analytics'
 
 const mapRef = ref()
@@ -83,7 +82,6 @@ const loadLatestDispatch = async () => {
     const planRes = await axios.get('/api/v1/dispatch/plans')
     if (planRes.data.length === 0) {
       statusMessage.value = '还没有可用于监控的调度计划'
-      ElMessage.warning('暂无调度计划')
       return
     }
 
@@ -91,7 +89,6 @@ const loadLatestDispatch = async () => {
     
     if (!latestPlan || !latestPlan.routes || latestPlan.routes.length === 0) {
       statusMessage.value = '最近一次调度还没有可展示的路线结果'
-      ElMessage.warning('最新计划没有路线数据')
       return
     }
 
@@ -101,7 +98,6 @@ const loadLatestDispatch = async () => {
   } catch (e) {
     console.error(e)
     statusMessage.value = '加载路线结果失败'
-    ElMessage.error('加载调度计划失败')
   }
 }
 
@@ -253,10 +249,6 @@ const nextStep = () => {
   })
 
   drawCouriers()
-
-  if (!canStep.value) {
-    ElMessage.success('所有包裹配送完成')
-  }
 }
 
 const resetSimulation = () => {
@@ -266,7 +258,6 @@ const resetSimulation = () => {
     courier.currentPos = [...stationCoord]
   })
   drawCouriers()
-  ElMessage.info('已重置到初始状态')
 }
 </script>
 

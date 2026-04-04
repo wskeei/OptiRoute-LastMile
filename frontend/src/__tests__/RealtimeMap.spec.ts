@@ -2,6 +2,7 @@ import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
+import { ElMessage } from 'element-plus'
 
 import RealtimeMap from '../views/RealtimeMap.vue'
 
@@ -126,5 +127,24 @@ describe('RealtimeMap', () => {
     expect(wrapper.text()).toContain('完成计划快递员')
     expect(wrapper.text()).not.toContain('旧READY快递员')
     expect(wrapper.text()).not.toContain('最近一次调度还没有可展示的路线结果')
+  })
+
+  it('keeps no-plan guidance in the page body instead of duplicating it with a toast', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({ data: [] })
+
+    const wrapper = mount(RealtimeMap, {
+      global: {
+        stubs: {
+          'el-alert': AlertStub,
+          'el-button': ButtonStub
+        }
+      }
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('还没有可用于监控的调度计划')
+    expect(vi.mocked(ElMessage.warning)).not.toHaveBeenCalled()
+    expect(vi.mocked(ElMessage.error)).not.toHaveBeenCalled()
   })
 })

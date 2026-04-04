@@ -12,30 +12,6 @@
       <article class="section-card">
         <header class="section-head">
           <div>
-            <h2>运行与演示边界</h2>
-            <p>后端真实行为与演示推导分开说明。</p>
-          </div>
-        </header>
-
-        <div class="note-groups">
-          <section>
-            <h3>后端实际行为</h3>
-            <ul class="note-list">
-              <li v-for="item in DISPATCH_TRUTH_NOTES" :key="item">{{ item }}</li>
-            </ul>
-          </section>
-          <section>
-            <h3>演示推导范围</h3>
-            <ul class="note-list">
-              <li v-for="item in SETTINGS_TRUTH_NOTES" :key="item">{{ item }}</li>
-            </ul>
-          </section>
-        </div>
-      </article>
-
-      <article class="section-card">
-        <header class="section-head">
-          <div>
             <h2>当前数据概览</h2>
             <p>来自接口的实际样本数量。</p>
           </div>
@@ -88,6 +64,47 @@
           </div>
         </div>
       </article>
+
+      <article class="section-card explanation-card">
+        <header class="section-head">
+          <div>
+            <h2>运行与演示边界</h2>
+            <p>需要时再展开详细说明。</p>
+          </div>
+        </header>
+
+        <div class="note-groups">
+          <section class="note-group">
+            <div class="note-group-head">
+              <div>
+                <h3>后端实际行为</h3>
+                <p>说明当前界面背后的真实运行方式。</p>
+              </div>
+              <button class="text-button" type="button" @click="truthOpen.dispatch = !truthOpen.dispatch">
+                {{ truthOpen.dispatch ? '收起说明' : '展开说明' }}
+              </button>
+            </div>
+            <ul v-if="truthOpen.dispatch" class="note-list">
+              <li v-for="item in DISPATCH_TRUTH_NOTES" :key="item">{{ item }}</li>
+            </ul>
+          </section>
+
+          <section class="note-group">
+            <div class="note-group-head">
+              <div>
+                <h3>演示推导范围</h3>
+                <p>说明哪些内容属于演示估算。</p>
+              </div>
+              <button class="text-button" type="button" @click="truthOpen.settings = !truthOpen.settings">
+                {{ truthOpen.settings ? '收起说明' : '展开说明' }}
+              </button>
+            </div>
+            <ul v-if="truthOpen.settings" class="note-list">
+              <li v-for="item in SETTINGS_TRUTH_NOTES" :key="item">{{ item }}</li>
+            </ul>
+          </section>
+        </div>
+      </article>
     </section>
   </div>
 </template>
@@ -100,6 +117,10 @@ import axios from 'axios'
 import { DISPATCH_TRUTH_NOTES, SETTINGS_TRUTH_NOTES } from '../lib/ux'
 
 const stats = ref({ totalPackages: 0, totalCouriers: 0, totalStations: 1, totalPlans: 0 })
+const truthOpen = ref({
+  dispatch: false,
+  settings: false
+})
 
 onMounted(() => {
   loadStats()
@@ -226,10 +247,39 @@ const clearHistory = async () => {
   gap: 1rem;
 }
 
+.note-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.note-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
 .note-groups h3 {
   margin: 0 0 0.65rem;
   color: #102a43;
   font-size: 0.95rem;
+}
+
+.note-group-head p {
+  margin: 0;
+  color: #6b7f92;
+  font-size: 0.82rem;
+}
+
+.text-button {
+  border: none;
+  background: transparent;
+  color: #184a68;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
 }
 
 .note-list {
@@ -299,6 +349,10 @@ const clearHistory = async () => {
 }
 
 @media (max-width: 640px) {
+  .note-group-head {
+    flex-direction: column;
+  }
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
