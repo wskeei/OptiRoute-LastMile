@@ -1,41 +1,84 @@
 # OS / IDE
 .DS_Store
+Thumbs.db
 .idea/
 .vscode/
-*.log
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.tmp
+*.temp
 
-# Python Backend
-backend/__pycache__/
-backend/**/*.pyc
-backend/.venv/
-backend/env/
-backend/venv/
+# Logs / runtime
+*.log
+*.pid
+*.pid.lock
+*.seed
+
+# Local environment
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.python-version
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.eggs/
+*.egg-info/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Backend
 backend/*.db
 backend/*.db-shm
 backend/*.db-wal
-backend/.pytest_cache/
-backend/.coverage
-backend/htmlcov/
 backend/dist/
 backend/build/
-backend/*.egg-info/
+backend/.venv/
+backend/venv/
+backend/env/
 
-# Frontend
+# Node / frontend
+node_modules/
 frontend/node_modules/
+dist/
 frontend/dist/
+coverage/
+*.tsbuildinfo
+.parcel-cache/
+.turbo/
+.next/
+.nuxt/
+.svelte-kit/
+.output/
+.cache/
+.eslintcache
+.sass-cache/
 frontend/.env.local
 frontend/.env.*.local
 frontend/npm-debug.log*
 frontend/yarn-error.log*
 frontend/yarn.lock
 frontend/package-lock.json
-# Editor directories and files
-.idea
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
 # Claude Code
 .claude/
