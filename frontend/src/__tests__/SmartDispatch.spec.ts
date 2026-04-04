@@ -134,7 +134,7 @@ describe('SmartDispatch', () => {
     vi.useRealTimers()
   })
 
-  it('explains the demo-only dispatch controls to the user', async () => {
+  it('keeps demo notes available without competing with the main actions', async () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
       .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
@@ -143,9 +143,13 @@ describe('SmartDispatch', () => {
     const wrapper = mountComponent()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('这个页面只保留会影响当前体验的真实动作')
+    expect(wrapper.text()).toContain('演示环境')
+    expect(wrapper.text()).toContain('演示数据与估算结果会单独标注')
+    expect(wrapper.text()).toContain('查看执行说明')
     expect(wrapper.text()).toContain('聚类数会根据当前可用快递员数量自动确定')
     expect(wrapper.text()).toContain('遗传算法迭代次数和种群规模使用后端固定配置')
+    expect(wrapper.text()).not.toContain('当前展示的是演示流程')
+    expect(wrapper.text()).not.toContain('下一步怎么做')
   })
 
   it('keeps the dispatch action disabled when the sample data is not ready', async () => {
@@ -159,6 +163,7 @@ describe('SmartDispatch', () => {
 
     const dispatchButton = wrapper.findAll('button').find((button) => button.text().includes('开始调度'))
     expect(dispatchButton?.attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).toContain('先准备样本')
   })
 
   it('creates a dispatch plan without sending fake frontend tuning parameters', async () => {

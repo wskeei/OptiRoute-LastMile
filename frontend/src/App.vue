@@ -30,7 +30,7 @@
           :key="item.path"
           :to="item.path"
           class="nav-link"
-          :class="{ active: $route.path === item.path }"
+          :class="{ active: isActiveRoute(item.path) }"
         >
           <el-icon class="nav-icon">
             <component :is="item.icon" />
@@ -66,7 +66,7 @@
             :key="item.path"
             :to="item.path"
             class="nav-link"
-            :class="{ active: $route.path === item.path }"
+            :class="{ active: isActiveRoute(item.path) }"
           >
             <el-icon class="nav-icon">
               <component :is="item.icon" />
@@ -89,7 +89,7 @@
             :key="item.path"
             :to="item.path"
             class="nav-link"
-            :class="{ active: $route.path === item.path }"
+            :class="{ active: isActiveRoute(item.path) }"
             @click="moreMenuOpen = false"
           >
             <el-icon class="nav-icon">

@@ -81,4 +81,19 @@ describe('page-level persistent feedback', () => {
     expect(wrapper.text()).toContain('运营分析加载失败')
     expect(wrapper.text()).toContain('请稍后重试，或先前往调度中心生成一条新的调度结果')
   })
+
+  it('keeps the dashboard focused on one onboarding surface after copy reduction', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ id: 1 }, { id: 2 }] })
+      .mockResolvedValueOnce({ data: [{ id: 1 }] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [] })
+
+    const wrapper = mountWithStubs(Dashboard)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('演示数据与估算结果会单独标注')
+    expect(wrapper.text()).not.toContain('当前是演示环境')
+    expect(wrapper.text()).not.toContain('关键入口')
+  })
 })

@@ -3,18 +3,15 @@
     <section class="page-hero">
       <div>
         <span class="eyebrow">任务概览</span>
-        <h1>先完成一次调度，再看监控和复盘。</h1>
-        <p class="page-summary">
-          这个首页不再承担“炫技展示”，只帮助你确认演示环境状态并进入下一步。
-        </p>
+        <h1>先发起调度，再看结果。</h1>
+        <p class="page-summary">这里主要帮你确认当前样本和下一步入口。</p>
+        <div class="hero-meta">
+          <span class="hero-chip">{{ PRODUCT_ENVIRONMENT_LABEL }}</span>
+          <span class="hero-note">{{ PRODUCT_ENVIRONMENT_NOTE }}</span>
+        </div>
       </div>
       <router-link class="primary-link" to="/dispatch">进入调度中心</router-link>
     </section>
-
-    <el-alert type="info" :closable="false" show-icon>
-      <template #title>当前是演示环境</template>
-      路线、距离和状态来自后端真实结果；演示数据来自“重置演示数据”接口。
-    </el-alert>
 
     <el-alert v-if="loadError" type="error" :closable="false" show-icon>
       <template #title>任务概览加载失败</template>
@@ -30,8 +27,8 @@
       <article class="workflow-card section-card">
         <header class="section-head">
           <div>
-            <h2>首次使用流程</h2>
-            <p>按顺序完成这三步，30 秒内可以得到第一条路线结果。</p>
+            <h2>开始流程</h2>
+            <p>按这三步拿到第一条路线。</p>
           </div>
         </header>
 
@@ -45,52 +42,28 @@
           </li>
         </ol>
       </article>
-
-      <article class="action-card section-card">
-        <header class="section-head">
-          <div>
-            <h2>关键入口</h2>
-            <p>所有主操作都放在可理解的按钮上，不再依赖整块卡片点击。</p>
-          </div>
-        </header>
-
-        <div class="action-list">
-          <router-link class="action-link" to="/dispatch">
-            <span>重置数据或开始调度</span>
-            <small>调度中心</small>
-          </router-link>
-          <router-link class="action-link" to="/monitor">
-            <span>查看最近一次路线</span>
-            <small>路线监控</small>
-          </router-link>
-          <router-link class="action-link" to="/history">
-            <span>打开历史计划详情</span>
-            <small>调度历史</small>
-          </router-link>
-        </div>
-      </article>
     </section>
 
     <section class="stats-grid">
       <article class="metric-card section-card">
         <span class="metric-label">包裹样本</span>
         <strong class="metric-value">{{ stats.totalPackages }}</strong>
-        <p>当前数据库中的包裹总数</p>
+        <p>数据库包裹总数</p>
       </article>
       <article class="metric-card section-card">
         <span class="metric-label">快递员样本</span>
         <strong class="metric-value">{{ stats.totalCouriers }}</strong>
-        <p>可用于演示的快递员总数</p>
+        <p>当前可用样本</p>
       </article>
       <article class="metric-card section-card">
         <span class="metric-label">历史调度</span>
         <strong class="metric-value">{{ stats.totalPlans }}</strong>
-        <p>已有实际路线结果的调度计划</p>
+        <p>已生成路线的计划</p>
       </article>
       <article class="metric-card section-card">
         <span class="metric-label">累计路线距离</span>
         <strong class="metric-value">{{ stats.optimizedDistance }}</strong>
-        <p>来自历史调度结果的总距离（km）</p>
+        <p>历史路线总距离（km）</p>
       </article>
     </section>
 
@@ -105,7 +78,7 @@
         <header class="section-head">
           <div>
             <h2>最近调度记录</h2>
-            <p>展示最近 8 次实际调度的路线距离和包裹数。</p>
+            <p>最近 8 次路线距离与包裹数。</p>
           </div>
         </header>
         <div ref="chartRef" class="chart-host"></div>
@@ -115,7 +88,7 @@
         <header class="section-head">
           <div>
             <h2>最近工作量排行</h2>
-            <p>使用后端返回的快递员完成量数据。</p>
+            <p>后端返回的快递员完成量。</p>
           </div>
         </header>
         <div ref="courierChartRef" class="chart-host"></div>
@@ -130,7 +103,7 @@ import axios from 'axios'
 import * as echarts from 'echarts'
 
 import { getCompletedPlans, getRecentCompletedPlans } from '../lib/analytics'
-import { ONBOARDING_STEPS } from '../lib/ux'
+import { ONBOARDING_STEPS, PRODUCT_ENVIRONMENT_LABEL, PRODUCT_ENVIRONMENT_NOTE } from '../lib/ux'
 
 const stats = ref({
   totalPackages: 0,
@@ -273,6 +246,32 @@ onMounted(async () => {
   line-height: 1.6;
 }
 
+.hero-meta {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: rgba(24, 74, 104, 0.12);
+  color: #184a68;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.hero-note {
+  color: #52606d;
+  font-size: 0.92rem;
+  line-height: 1.4;
+}
+
 .primary-link,
 .text-link,
 .action-link {
@@ -296,6 +295,10 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.workflow-grid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .section-card {
@@ -357,27 +360,6 @@ onMounted(async () => {
   color: #184a68;
   font-weight: 600;
   white-space: nowrap;
-}
-
-.action-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.action-link {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  padding: 1rem;
-  border-radius: 1rem;
-  background: rgba(247, 250, 252, 0.9);
-  border: 1px solid rgba(24, 74, 104, 0.08);
-  color: #102a43;
-}
-
-.action-link small {
-  color: #52606d;
 }
 
 .stats-grid {

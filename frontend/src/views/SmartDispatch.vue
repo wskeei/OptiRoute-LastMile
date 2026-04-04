@@ -3,10 +3,8 @@
     <section class="page-hero">
       <div>
         <span class="eyebrow">调度中心</span>
-        <h1>先准备演示样本，再发起一次真实调度。</h1>
-        <p class="page-summary">
-          这个页面只保留会影响当前体验的真实动作。路线结果、总距离和状态都来自后端接口返回。
-        </p>
+        <h1>准备样本后直接发起调度。</h1>
+        <p class="page-summary">路线结果会在地图和状态区持续刷新。</p>
       </div>
 
       <div class="hero-actions">
@@ -16,20 +14,19 @@
         <el-button type="primary" size="large" :loading="loading" :disabled="!canDispatch" @click="startDispatch">
           开始调度
         </el-button>
+        <div class="hero-note">
+          <span class="hero-chip">{{ PRODUCT_ENVIRONMENT_LABEL }}</span>
+          <p>{{ PRODUCT_ENVIRONMENT_NOTE }}</p>
+        </div>
       </div>
     </section>
-
-    <el-alert type="info" :closable="false" show-icon>
-      <template #title>当前展示的是演示流程</template>
-      “重置演示数据”会随机生成待调度包裹和可用快递员；界面不提供真实算法调参入口。
-    </el-alert>
 
     <section class="dispatch-layout">
       <article class="section-card map-panel">
         <header class="section-head">
           <div>
             <h2>路线地图</h2>
-            <p>地图展示最近一次调度的路线结果，优化中会持续刷新。</p>
+            <p>最近一次结果会在这里刷新。</p>
           </div>
         </header>
 
@@ -55,12 +52,12 @@
               </div>
             </section>
 
-            <section class="info-block">
-              <h3>执行说明</h3>
+            <details class="info-block truth-details">
+              <summary>查看执行说明</summary>
               <ul class="note-list">
                 <li v-for="item in DISPATCH_TRUTH_NOTES" :key="item">{{ item }}</li>
               </ul>
-            </section>
+            </details>
 
             <section v-if="inlineStatus" class="info-block">
               <h3>{{ inlineStatus.title }}</h3>
@@ -103,32 +100,11 @@
         </div>
       </article>
 
-      <article class="section-card workflow-panel">
-        <header class="section-head">
-          <div>
-            <h2>下一步怎么做</h2>
-            <p>如果这是第一次打开系统，按这三步操作即可。</p>
-          </div>
-        </header>
+    </section>
 
-        <ol class="step-list">
-          <li v-for="item in ONBOARDING_STEPS" :key="item.title" class="step-item">
-            <strong>{{ item.title }}</strong>
-            <p>{{ item.description }}</p>
-            <router-link class="text-link" :to="item.path">{{ item.actionLabel }}</router-link>
-          </li>
-        </ol>
-
-        <el-alert
-          v-if="!canDispatch"
-          type="warning"
-          :closable="false"
-          show-icon
-          title="当前还不能发起调度"
-        >
-          请先确保有待调度包裹和可用快递员。最简单的做法是点击“重置演示数据”。
-        </el-alert>
-      </article>
+    <section v-if="!canDispatch" class="section-card helper-card">
+      <h2>先准备样本</h2>
+      <p>需要待调度包裹和可用快递员后才能开始。最简单的做法是点击“重置演示数据”。</p>
     </section>
   </div>
 </template>
@@ -140,7 +116,7 @@ import L from 'leaflet'
 import 'leaflet-ant-path'
 import { ElMessage } from 'element-plus'
 
-import { DISPATCH_TRUTH_NOTES, ONBOARDING_STEPS } from '../lib/ux'
+import { DISPATCH_TRUTH_NOTES, PRODUCT_ENVIRONMENT_LABEL, PRODUCT_ENVIRONMENT_NOTE } from '../lib/ux'
 import { sortPlansByNewest } from '../lib/analytics'
 
 interface DispatchResult {
@@ -478,15 +454,13 @@ const resetDemo = async () => {
 
 .hero-actions {
   display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: flex-end;
 }
 
 .dispatch-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(18rem, 0.9fr);
-  gap: 1rem;
+  display: block;
 }
 
 .section-head {
@@ -507,6 +481,35 @@ const resetDemo = async () => {
   margin: 0;
   color: #52606d;
   line-height: 1.5;
+}
+
+.hero-note {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  align-items: center;
+  max-width: 22rem;
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: rgba(24, 74, 104, 0.12);
+  color: #184a68;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.hero-note p {
+  margin: 0;
+  color: #52606d;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  text-align: right;
 }
 
 .map-panel {
@@ -579,6 +582,21 @@ const resetDemo = async () => {
   line-height: 1.7;
 }
 
+.truth-details summary {
+  cursor: pointer;
+  color: #184a68;
+  font-weight: 600;
+  list-style: none;
+}
+
+.truth-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.truth-details[open] summary {
+  margin-bottom: 0.65rem;
+}
+
 .status-copy {
   margin: 0;
   color: #52606d;
@@ -589,44 +607,15 @@ const resetDemo = async () => {
   margin-top: 0.75rem;
 }
 
-.workflow-panel {
+.helper-card {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.5rem;
 }
 
-.step-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.helper-card h2,
+.helper-card p {
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.step-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding: 1rem;
-  border-radius: 1rem;
-  background: rgba(224, 232, 240, 0.45);
-}
-
-.step-item strong {
-  color: #102a43;
-}
-
-.step-item p {
-  margin: 0;
-  color: #52606d;
-  line-height: 1.5;
-}
-
-.text-link {
-  color: #184a68;
-  font-weight: 600;
-  text-decoration: none;
 }
 
 @media (max-width: 1100px) {
@@ -634,19 +623,24 @@ const resetDemo = async () => {
   .map-shell {
     grid-template-columns: 1fr;
   }
-
-  .workflow-panel {
-    order: -1;
-  }
 }
 
 @media (max-width: 900px) {
   .page-hero {
     align-items: flex-start;
+    flex-direction: column;
   }
 
   .hero-actions {
+    align-items: flex-start;
+  }
+
+  .hero-note {
     justify-content: flex-start;
+  }
+
+  .hero-note p {
+    text-align: left;
   }
 }
 </style>

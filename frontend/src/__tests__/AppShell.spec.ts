@@ -38,9 +38,6 @@ const mountApp = () => {
 
   return mount(App, {
     global: {
-      mocks: {
-        $route: routeState
-      },
       stubs: {
         'el-icon': passthroughStub(),
         'router-link': RouterLinkStub,
@@ -57,11 +54,12 @@ describe('App shell', () => {
 
   it('keeps the core routes visible in compact navigation', () => {
     const wrapper = mountApp()
+    const primaryNav = wrapper.get('[aria-label="主要导航"]')
 
-    expect(wrapper.find('a[href="/dispatch"]').exists()).toBe(true)
-    expect(wrapper.find('a[href="/monitor"]').exists()).toBe(true)
-    expect(wrapper.find('a[href="/history"]').exists()).toBe(true)
-    expect(wrapper.find('a[href="/dashboard"]').exists()).toBe(true)
+    expect(primaryNav.find('a[href="/dispatch"]').exists()).toBe(true)
+    expect(primaryNav.find('a[href="/monitor"]').exists()).toBe(true)
+    expect(primaryNav.find('a[href="/history"]').exists()).toBe(true)
+    expect(primaryNav.find('a[href="/dashboard"]').exists()).toBe(true)
   })
 
   it('does not render the removed shell summary copy', () => {
