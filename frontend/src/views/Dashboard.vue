@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { nextTick, onMounted, ref } from 'vue'
 import axios from 'axios'
 import * as echarts from 'echarts'
 
@@ -143,6 +143,8 @@ onMounted(async () => {
       0
     )
     stats.value.optimizedDistance = totalDistance.toFixed(1)
+
+    await nextTick()
 
     if (chartRef.value && completedPlans.length > 0) {
       const chart = echarts.init(chartRef.value)
