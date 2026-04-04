@@ -197,21 +197,21 @@ onBeforeUnmount(() => {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 18rem minmax(0, 1fr);
+  grid-template-columns: 14.5rem minmax(0, 1fr);
   background:
     radial-gradient(circle at top left, rgba(62, 106, 138, 0.08), transparent 24rem),
     linear-gradient(180deg, #f5f7fa 0%, #edf2f7 100%);
 }
 
 .app-shell.shell-collapsed {
-  grid-template-columns: 5.5rem minmax(0, 1fr);
+  grid-template-columns: 4.5rem minmax(0, 1fr);
 }
 
 .sidebar {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1.25rem;
+  gap: 0.75rem;
+  padding: 0.875rem;
   border-right: 1px solid rgba(85, 103, 122, 0.12);
   background: rgba(247, 250, 252, 0.94);
   backdrop-filter: blur(12px);
@@ -226,7 +226,7 @@ onBeforeUnmount(() => {
 }
 
 .app-shell.shell-collapsed .sidebar {
-  padding-inline: 0.875rem;
+  padding-inline: 0.625rem;
 }
 
 .app-shell.shell-collapsed .sidebar-head {
@@ -240,21 +240,21 @@ onBeforeUnmount(() => {
 }
 
 .app-shell.shell-collapsed .nav-link {
-  padding-inline: 0.6rem;
+  padding-inline: 0.425rem;
 }
 
 .sidebar-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .brand {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   color: #1f2933;
   text-decoration: none;
 }
@@ -304,13 +304,13 @@ onBeforeUnmount(() => {
 .nav-list {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.25rem;
 }
 
 .nav-section {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .nav-section-label {
@@ -326,9 +326,9 @@ onBeforeUnmount(() => {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.875rem;
-  padding: 0.8rem 0.95rem;
-  border-radius: 1rem;
+  gap: 0.625rem;
+  padding: 0.66rem 0.72rem;
+  border-radius: 0.9rem;
   color: var(--text-strong);
   text-decoration: none;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
