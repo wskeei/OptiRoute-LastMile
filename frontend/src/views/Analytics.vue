@@ -11,6 +11,16 @@
       <el-button @click="loadData">刷新数据</el-button>
     </section>
 
+    <el-alert v-if="loadError" type="error" :closable="false" show-icon>
+      <template #title>运营分析加载失败</template>
+      请稍后重试，或先前往调度中心生成一条新的调度结果。{{ loadError }}
+    </el-alert>
+
+    <el-alert v-else-if="loading" type="info" :closable="false" show-icon>
+      <template #title>正在加载运营分析</template>
+      正在读取调度计划、包裹和快递员数据。
+    </el-alert>
+
     <section class="section-card">
       <header class="section-head">
         <div>
@@ -65,7 +75,13 @@
       </div>
     </section>
 
-    <section class="charts-grid">
+    <section v-if="!loadError && summary.factual.totalPlans === 0" class="section-card empty-panel">
+      <h2>还没有可分析的调度结果</h2>
+      <p>先在调度中心生成一条路线结果，分析图表和工作量统计才会出现。</p>
+      <router-link class="refresh-link" to="/dispatch">前往调度中心</router-link>
+    </section>
+
+    <section v-else-if="!loadError" class="charts-grid">
       <article class="section-card">
         <header class="section-head">
           <div>
@@ -87,7 +103,7 @@
       </article>
     </section>
 
-    <section class="charts-grid">
+    <section v-if="!loadError && summary.factual.totalPlans > 0" class="charts-grid">
       <article class="section-card">
         <header class="section-head">
           <div>
@@ -116,7 +132,7 @@ import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import * as echarts from 'echarts'
 
-import { buildAnalyticsSummary, getCompletedPlans } from '../lib/analytics'
+import { buildAnalyticsSummary, getCompletedPlans, getRecentCompletedPlans } from '../lib/analytics'
 
 const summary = ref(
   buildAnalyticsSummary({
@@ -130,6 +146,8 @@ const trendChartRef = ref()
 const courierChartRef = ref()
 const packageStatusChartRef = ref()
 const courierStatusChartRef = ref()
+const loading = ref(true)
+const loadError = ref('')
 
 const factualKpis = computed(() => [
   {
@@ -165,6 +183,8 @@ const factualKpis = computed(() => [
 ])
 
 const loadData = async () => {
+  loading.value = true
+  loadError.value = ''
   try {
     const [plansRes, packagesRes, couriersRes] = await Promise.all([
       axios.get('/api/v1/dispatch/plans'),
@@ -190,12 +210,15 @@ const loadData = async () => {
         })
         .sort((left: any, right: any) => right.deliveredCount - left.deliveredCount) || []
 
-    initTrendChart(completedPlans)
+    initTrendChart(plans)
     initCourierChart(latestRanking)
     initPackageStatusChart(packages)
     initCourierStatusChart(couriers)
   } catch (error) {
     console.error(error)
+    loadError.value = error instanceof Error ? error.message : '无法连接到分析接口。'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -203,7 +226,7 @@ const initTrendChart = (plans: any[]) => {
   if (!trendChartRef.value) return
   const chart = echarts.init(trendChartRef.value)
 
-  const recentPlans = plans.slice(0, 10).reverse()
+  const recentPlans = getRecentCompletedPlans(plans, 10)
   const dates = recentPlans.map((plan: any) => new Date(plan.created_at).toLocaleDateString('zh-CN'))
   const distances = recentPlans.map(
     (plan: any) =>
@@ -426,6 +449,29 @@ onMounted(() => loadData())
 
 .chart-host.compact {
   height: 18rem;
+}
+
+.empty-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.empty-panel h2 {
+  margin: 0;
+  color: #102a43;
+}
+
+.empty-panel p {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.6;
+}
+
+.refresh-link {
+  color: #184a68;
+  font-weight: 600;
+  text-decoration: none;
 }
 
 @media (max-width: 960px) {

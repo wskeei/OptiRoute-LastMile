@@ -28,9 +28,9 @@
         先重置演示数据，再启动调度，然后查看路线结果。
       </p>
 
-      <nav class="nav-list" aria-label="主要导航">
+      <nav class="nav-list nav-primary" aria-label="主要导航">
         <router-link
-          v-for="item in navItems"
+          v-for="item in primaryNavItems"
           :key="item.path"
           :to="item.path"
           class="nav-link"
@@ -44,7 +44,68 @@
             <span class="nav-desc">{{ item.description }}</span>
           </span>
         </router-link>
+
+        <button
+          v-if="isCompactNavigation"
+          class="nav-link nav-more"
+          type="button"
+          :aria-expanded="moreMenuOpen"
+          aria-label="展开更多页面"
+          @click="moreMenuOpen = !moreMenuOpen"
+        >
+          <el-icon class="nav-icon"><MoreFilled /></el-icon>
+          <span class="nav-copy">
+            <span class="nav-label">更多页面</span>
+            <span class="nav-desc">数据、分析与系统说明</span>
+          </span>
+        </button>
       </nav>
+
+      <section v-if="!isCompactNavigation" class="nav-section">
+        <p v-show="!collapsed" class="nav-section-label">辅助页面</p>
+        <nav class="nav-list" aria-label="辅助导航">
+          <router-link
+            v-for="item in secondaryNavItems"
+            :key="item.path"
+            :to="item.path"
+            class="nav-link"
+            :class="{ active: $route.path === item.path }"
+          >
+            <el-icon class="nav-icon">
+              <component :is="item.icon" />
+            </el-icon>
+            <span v-show="!collapsed" class="nav-copy">
+              <span class="nav-label">{{ item.label }}</span>
+              <span class="nav-desc">{{ item.description }}</span>
+            </span>
+          </router-link>
+        </nav>
+      </section>
+
+      <section v-else-if="moreMenuOpen" class="mobile-more section-card">
+        <p class="nav-section-label">辅助页面</p>
+        <nav class="nav-list nav-secondary" aria-label="辅助导航">
+          <router-link
+            v-for="item in secondaryNavItems"
+            :key="item.path"
+            :to="item.path"
+            class="nav-link"
+            :class="{ active: $route.path === item.path }"
+            @click="moreMenuOpen = false"
+          >
+            <el-icon class="nav-icon">
+              <component :is="item.icon" />
+            </el-icon>
+            <span class="nav-copy">
+              <span class="nav-label">{{ item.label }}</span>
+              <span class="nav-desc">{{ item.description }}</span>
+            </span>
+          </router-link>
+        </nav>
+      </section>
+      <section v-else class="mobile-summary section-card">
+        <p class="mobile-summary-text">主要操作保留在上方，分析和系统页面收纳在“更多页面”。</p>
+      </section>
     </aside>
 
     <main class="main-content">
@@ -54,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, markRaw, ref } from 'vue'
+import { computed, markRaw, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   Box,
@@ -62,16 +123,24 @@ import {
   Cpu,
   HomeFilled,
   Location,
+  MoreFilled,
   Operation,
   Setting,
   TrendCharts,
   User
 } from '@element-plus/icons-vue'
 
-import { NAV_ITEMS, PRODUCT_ENVIRONMENT_LABEL, PRODUCT_NAME } from './lib/ux'
+import {
+  PRIMARY_NAV_ITEMS,
+  PRODUCT_ENVIRONMENT_LABEL,
+  PRODUCT_NAME,
+  SECONDARY_NAV_ITEMS
+} from './lib/ux'
 
 const collapsed = ref(false)
+const moreMenuOpen = ref(false)
 const route = useRoute()
+const isCompactNavigation = ref(false)
 
 const iconMap = {
   Box: markRaw(Box),
@@ -79,17 +148,40 @@ const iconMap = {
   Cpu: markRaw(Cpu),
   HomeFilled: markRaw(HomeFilled),
   Location: markRaw(Location),
+  MoreFilled: markRaw(MoreFilled),
   Setting: markRaw(Setting),
   TrendCharts: markRaw(TrendCharts),
   User: markRaw(User)
 }
 
-const navItems = NAV_ITEMS.map((item) => ({
+const primaryNavItems = PRIMARY_NAV_ITEMS.map((item) => ({
+  ...item,
+  icon: iconMap[item.icon]
+}))
+
+const secondaryNavItems = SECONDARY_NAV_ITEMS.map((item) => ({
   ...item,
   icon: iconMap[item.icon]
 }))
 
 const isAuthPage = computed(() => route.path === '/login' || route.path === '/register')
+
+const syncCompactNavigation = () => {
+  if (typeof window === 'undefined') return
+  isCompactNavigation.value = window.innerWidth <= 960
+  if (!isCompactNavigation.value) {
+    moreMenuOpen.value = false
+  }
+}
+
+onMounted(() => {
+  syncCompactNavigation()
+  window.addEventListener('resize', syncCompactNavigation)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncCompactNavigation)
+})
 </script>
 
 <style scoped>
@@ -198,6 +290,21 @@ const isAuthPage = computed(() => route.path === '/login' || route.path === '/re
   gap: 0.4rem;
 }
 
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav-section-label {
+  margin: 0;
+  color: #829ab1;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .nav-link {
   min-width: 0;
   display: flex;
@@ -219,6 +326,13 @@ const isAuthPage = computed(() => route.path === '/login' || route.path === '/re
 .nav-link.active {
   background: #184a68;
   color: #f7fafc;
+}
+
+.nav-more {
+  border: 1px dashed rgba(24, 74, 104, 0.18);
+  background: rgba(255, 255, 255, 0.8);
+  text-align: left;
+  cursor: pointer;
 }
 
 .nav-icon {
@@ -249,6 +363,18 @@ const isAuthPage = computed(() => route.path === '/login' || route.path === '/re
   padding: 1.5rem;
 }
 
+.mobile-more,
+.mobile-summary {
+  display: none;
+}
+
+.mobile-summary-text {
+  margin: 0;
+  color: #52606d;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 @media (max-width: 960px) {
   .app-shell {
     grid-template-columns: 1fr;
@@ -270,16 +396,28 @@ const isAuthPage = computed(() => route.path === '/login' || route.path === '/re
 
   .nav-list {
     flex-direction: row;
-    overflow-x: auto;
-    padding-bottom: 0.25rem;
+    flex-wrap: wrap;
   }
 
   .nav-link {
-    min-width: 11rem;
+    min-width: calc(50% - 0.25rem);
   }
 
   .main-content {
     padding: 1rem;
+  }
+
+  .mobile-more,
+  .mobile-summary {
+    display: block;
+  }
+
+  .nav-secondary {
+    flex-direction: column;
+  }
+
+  .nav-secondary .nav-link {
+    min-width: 0;
   }
 }
 
@@ -297,7 +435,7 @@ const isAuthPage = computed(() => route.path === '/login' || route.path === '/re
   }
 
   .nav-link {
-    min-width: 10rem;
+    min-width: 100%;
     padding: 0.75rem 0.85rem;
   }
 }

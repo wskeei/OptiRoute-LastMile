@@ -5,6 +5,8 @@ import {
   DEFAULT_ROUTE,
   DISPATCH_TRUTH_NOTES,
   NAV_ITEMS,
+  PRIMARY_NAV_ITEMS,
+  SECONDARY_NAV_ITEMS,
   ONBOARDING_STEPS,
   PRIMARY_ROUTE
 } from '../lib/ux'
@@ -24,6 +26,21 @@ describe('ux config', () => {
     expect(NAV_ITEMS.findIndex((item) => item.path === '/history')).toBeLessThan(
       NAV_ITEMS.findIndex((item) => item.path === '/analytics')
     )
+  })
+
+  it('keeps mobile primary navigation focused on core tasks', () => {
+    expect(PRIMARY_NAV_ITEMS.map((item) => item.path)).toEqual([
+      '/dispatch',
+      '/monitor',
+      '/history',
+      '/dashboard'
+    ])
+    expect(SECONDARY_NAV_ITEMS.map((item) => item.path)).toEqual([
+      '/packages',
+      '/couriers',
+      '/analytics',
+      '/settings'
+    ])
   })
 
   it('teaches the demo workflow in the order users need to follow', () => {

@@ -43,6 +43,7 @@ import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet-ant-path'
 import { ElMessage } from 'element-plus'
+import { sortPlansByNewest } from '../lib/analytics'
 
 const mapRef = ref()
 let map: any = null
@@ -88,8 +89,7 @@ const loadLatestDispatch = async () => {
       return
     }
 
-    // Explicitly sort by ID desc to get absolutely latest
-    const sortedPlans = planRes.data.sort((a: any, b: any) => b.id - a.id)
+    const sortedPlans = sortPlansByNewest(planRes.data)
     const latestPlan = sortedPlans.find((p: any) => p.status === 'READY')
     
     if (!latestPlan || !latestPlan.routes || latestPlan.routes.length === 0) {

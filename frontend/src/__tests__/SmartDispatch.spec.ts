@@ -1,6 +1,6 @@
 import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
 
 import SmartDispatch from '../views/SmartDispatch.vue'
@@ -61,8 +61,16 @@ const ButtonStub = defineComponent({
 })
 
 const AlertStub = defineComponent({
-  setup(_, { slots }) {
-    return () => h('div', { class: 'el-alert' }, slots.default?.())
+  props: {
+    title: String
+  },
+  setup(props, { slots }) {
+    return () =>
+      h('div', { class: 'el-alert' }, [
+        props.title ? h('strong', props.title) : null,
+        slots.title?.(),
+        slots.default?.()
+      ])
   }
 })
 
@@ -122,6 +130,10 @@ describe('SmartDispatch', () => {
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('explains the demo-only dispatch controls to the user', async () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
@@ -169,5 +181,29 @@ describe('SmartDispatch', () => {
       })
     )
     expect(vi.mocked(axios.post).mock.calls[0]?.[1]).not.toHaveProperty('algorithm_meta')
+  })
+
+  it('keeps polling failures visible in the page body with recovery guidance', async () => {
+    vi.useFakeTimers()
+
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: [] })
+      .mockRejectedValueOnce(new Error('poll failed'))
+    vi.mocked(axios.post).mockResolvedValueOnce({ data: { id: 9 } })
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    const dispatchButton = wrapper.findAll('button').find((button) => button.text().includes('开始调度'))
+    await dispatchButton?.trigger('click')
+    await flushPromises()
+
+    await vi.advanceTimersByTimeAsync(1000)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('调度状态获取失败')
+    expect(wrapper.text()).toContain('可以重新发起调度，或先点击“重置演示数据”刷新样本')
   })
 })

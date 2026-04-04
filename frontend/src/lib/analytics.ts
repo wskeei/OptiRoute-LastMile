@@ -8,12 +8,35 @@ const COMPLETED_PLAN_STATUSES = new Set(['READY', 'COMPLETED'])
 
 const round = (value: number, digits = 2) => Number(value.toFixed(digits))
 
+const toTimestamp = (plan: any) => {
+  if (plan.created_at) {
+    const timestamp = new Date(plan.created_at).getTime()
+    if (!Number.isNaN(timestamp)) {
+      return timestamp
+    }
+  }
+
+  return typeof plan.id === 'number' ? plan.id : 0
+}
+
+export const sortPlansByNewest = (plans: any[]) =>
+  [...plans].sort((left: any, right: any) => toTimestamp(right) - toTimestamp(left))
+
 export const getCompletedPlans = (plans: any[]) =>
-  plans.filter((plan: any) => COMPLETED_PLAN_STATUSES.has(plan.status) && plan.routes?.length > 0)
+  sortPlansByNewest(plans).filter(
+    (plan: any) => COMPLETED_PLAN_STATUSES.has(plan.status) && plan.routes?.length > 0
+  )
+
+export const getLatestCompletedPlan = (plans: any[]) => getCompletedPlans(plans)[0]
+
+export const getRecentCompletedPlans = (plans: any[], limit: number) =>
+  getCompletedPlans(plans)
+    .slice(0, limit)
+    .reverse()
 
 export const buildAnalyticsSummary = ({ plans, packages, couriers }: AnalyticsInput) => {
   const completedPlans = getCompletedPlans(plans)
-  const latestPlan = completedPlans[0]
+  const latestPlan = getLatestCompletedPlan(plans)
 
   const totalOptimizedDistance = round(
     completedPlans.reduce(

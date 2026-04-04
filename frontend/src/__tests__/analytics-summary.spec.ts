@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAnalyticsSummary } from '../lib/analytics'
+import {
+  buildAnalyticsSummary,
+  getLatestCompletedPlan,
+  getRecentCompletedPlans,
+  sortPlansByNewest
+} from '../lib/analytics'
 
 describe('buildAnalyticsSummary', () => {
   it('keeps measured operations metrics separate from estimated optimization metrics', () => {
@@ -63,5 +68,32 @@ describe('buildAnalyticsSummary', () => {
     expect(summary.estimated.baselineDistance).toBe(0)
     expect(summary.estimated.savedDistance).toBe(0)
     expect(summary.estimated.savedCost).toBe(0)
+  })
+
+  it('sorts plans explicitly by newest created_at before deriving latest and recent sets', () => {
+    const plans = [
+      {
+        id: 7,
+        created_at: '2026-04-01T10:00:00Z',
+        status: 'COMPLETED',
+        routes: [{ geo_json: { total_distance_km: 5, package_count: 1 }, courier_id: 2 }]
+      },
+      {
+        id: 9,
+        created_at: '2026-04-03T10:00:00Z',
+        status: 'READY',
+        routes: [{ geo_json: { total_distance_km: 4, package_count: 1 }, courier_id: 1 }]
+      },
+      {
+        id: 8,
+        created_at: '2026-04-02T10:00:00Z',
+        status: 'READY',
+        routes: [{ geo_json: { total_distance_km: 3, package_count: 1 }, courier_id: 3 }]
+      }
+    ]
+
+    expect(sortPlansByNewest(plans).map((plan) => plan.id)).toEqual([9, 8, 7])
+    expect(getLatestCompletedPlan(plans)?.id).toBe(9)
+    expect(getRecentCompletedPlans(plans, 2).map((plan) => plan.id)).toEqual([8, 9])
   })
 })

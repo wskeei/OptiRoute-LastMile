@@ -15,7 +15,26 @@
       </div>
     </div>
 
-    <div v-if="!compareMode" class="single-view">
+    <div v-if="!loading && !loadError && plans.length === 0" class="glass-card empty-history">
+      <h3>还没有已完成的调度记录</h3>
+      <p>先前往调度中心重置演示数据并发起一次调度，完成后这里会出现可复盘的路线记录。</p>
+      <router-link class="empty-link" :to="ONBOARDING_STEPS[0]?.path || '/dispatch'">
+        {{ ONBOARDING_STEPS[0]?.actionLabel || '前往调度中心' }}
+      </router-link>
+    </div>
+
+    <div v-else-if="loading" class="glass-card empty-history">
+      <h3>正在加载历史记录</h3>
+      <p>请稍候，系统正在读取已完成的调度计划。</p>
+    </div>
+
+    <div v-else-if="loadError" class="glass-card empty-history">
+      <h3>历史记录加载失败</h3>
+      <p>{{ loadError }}</p>
+      <router-link class="empty-link" to="/dispatch">前往调度中心</router-link>
+    </div>
+
+    <div v-else-if="!compareMode" class="single-view">
       <div class="stats-overview glass-card">
         <h3>历史调度趋势</h3>
         <p class="section-note">图表按照创建时间顺序展示已完成记录，供复盘走查。</p>
@@ -97,7 +116,7 @@
       v-model="detailDrawerVisible"
       title="调度方案复盘"
       direction="rtl"
-      size="460px"
+      :size="drawerSize"
       destroy-on-close
     >
       <div v-if="activePlan">
@@ -135,9 +154,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
 import axios from 'axios'
 import * as echarts from 'echarts'
+import { ONBOARDING_STEPS } from '../lib/ux'
+import { getCompletedPlans } from '../lib/analytics'
 
 const plans = ref<any[]>([])
 const compareMode = ref(false)
@@ -146,20 +167,41 @@ const trendChartRef = ref()
 const compareChartRef = ref()
 const detailDrawerVisible = ref(false)
 const activePlan = ref<any | null>(null)
+const loading = ref(false)
+const loadError = ref('')
+const drawerSize = ref('460px')
+
+const syncDrawerSize = () => {
+  if (typeof window === 'undefined') return
+  drawerSize.value = window.innerWidth < 640 ? '100%' : '460px'
+}
 
 const loadPlans = async () => {
+  loading.value = true
+  loadError.value = ''
   try {
     const res = await axios.get('/api/v1/dispatch/plans')
-    plans.value = res.data.filter((plan: any) => (plan.status === 'READY' || plan.status === 'COMPLETED') && plan.routes?.length > 0)
+    plans.value = getCompletedPlans(res.data)
     if (plans.value.length > 0) {
       initTrendChart()
     }
   } catch (e) {
     console.error(e)
+    loadError.value = '请刷新页面，或先前往调度中心生成第一条调度结果。'
+  } finally {
+    loading.value = false
   }
 }
 
-onMounted(() => loadPlans())
+onMounted(() => {
+  syncDrawerSize()
+  window.addEventListener('resize', syncDrawerSize)
+  loadPlans()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncDrawerSize)
+})
 
 watch(selectedPlans, () => {
   if (selectedPlans.value.length >= 2) {
@@ -368,6 +410,11 @@ h2, h3, h4 { margin: 0; }
 
 .compare-content { display: flex; flex-direction: column; gap: 20px; }
 .compare-chart, .compare-table { margin-top: 0; }
+
+.empty-history { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.empty-history h3 { color: #102a43; }
+.empty-history p { margin: 0; color: #52606d; line-height: 1.6; }
+.empty-link { color: #184a68; text-decoration: none; font-weight: 600; }
 
 .detail-descriptions { margin-bottom: 16px; }
 .route-list h4 { margin-bottom: 12px; font-size: 16px; }

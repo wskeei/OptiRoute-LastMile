@@ -62,6 +62,16 @@
               </ul>
             </section>
 
+            <section v-if="inlineStatus" class="info-block">
+              <h3>{{ inlineStatus.title }}</h3>
+              <p class="status-copy">{{ inlineStatus.message }}</p>
+              <div v-if="inlineStatus.action === 'retry-dispatch'" class="status-actions">
+                <el-button type="primary" size="small" :disabled="!canDispatch || loading" @click="startDispatch">
+                  重新发起调度
+                </el-button>
+              </div>
+            </section>
+
             <section v-if="loading" class="info-block">
               <h3>调度进度</h3>
               <el-steps :active="step" direction="vertical" size="small">
@@ -131,11 +141,18 @@ import 'leaflet-ant-path'
 import { ElMessage } from 'element-plus'
 
 import { DISPATCH_TRUTH_NOTES, ONBOARDING_STEPS } from '../lib/ux'
+import { sortPlansByNewest } from '../lib/analytics'
 
 interface DispatchResult {
   routeCount: number
   totalDistance: string
   generation: number
+}
+
+interface InlineStatus {
+  title: string
+  message: string
+  action?: 'retry-dispatch'
 }
 
 const loading = ref(false)
@@ -146,6 +163,7 @@ const pendingPackageCount = ref(0)
 const availableCourierCount = ref(0)
 const stationName = ref('人民广场配送站')
 const result = ref<DispatchResult | null>(null)
+const inlineStatus = ref<InlineStatus | null>(null)
 const mapRef = ref()
 const stationId = ref(1)
 const allPackages = ref<any[]>([])
@@ -155,6 +173,10 @@ const packageLayerGroup = ref<any>(null)
 const routeLayerGroup = ref<any>(null)
 
 const canDispatch = computed(() => pendingPackageCount.value > 0 && availableCourierCount.value > 0)
+
+const setInlineStatus = (title: string, message: string, action?: 'retry-dispatch') => {
+  inlineStatus.value = { title, message, action }
+}
 
 const fetchDispatchContext = async () => {
   const [packagesRes, couriersRes] = await Promise.all([
@@ -199,6 +221,7 @@ onMounted(async () => {
 
   try {
     await fetchDispatchContext()
+    inlineStatus.value = null
 
     map = L.map(mapRef.value).setView([31.2304, 121.4737], 12)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map)
@@ -217,12 +240,13 @@ onMounted(async () => {
     }, 200)
   } catch (error) {
     console.error(error)
+    setInlineStatus('调度中心加载失败', '无法读取当前样本数据，请刷新页面后重试。')
   }
 })
 
 const restoreLatestPlan = async () => {
   const plansRes = await axios.get('/api/v1/dispatch/plans')
-  const activePlans = plansRes.data.filter((plan: any) =>
+  const activePlans = sortPlansByNewest(plansRes.data).filter((plan: any) =>
     ['READY', 'COMPLETED', 'OPTIMIZING'].includes(plan.status)
   )
 
@@ -247,6 +271,7 @@ const startDispatch = async () => {
   loading.value = true
   step.value = 1
   result.value = null
+  inlineStatus.value = null
 
   try {
     ElMessage.info('正在创建调度计划...')
@@ -262,6 +287,7 @@ const startDispatch = async () => {
     ElMessage.error(error.response?.data?.detail || '调度失败')
     loading.value = false
     step.value = 0
+    setInlineStatus('调度创建失败', '当前无法创建新的调度计划，请稍后重试。', 'retry-dispatch')
   }
 }
 
@@ -290,6 +316,7 @@ const pollStatus = async (planId: number) => {
       clearInterval(interval)
       loading.value = false
       console.error(error)
+      setInlineStatus('调度状态获取失败', '可以重新发起调度，或先点击“重置演示数据”刷新样本。', 'retry-dispatch')
     }
   }, 1000)
 }
@@ -390,6 +417,7 @@ const resetDemo = async () => {
     ElMessage.success('演示样本已更新，可以重新发起调度')
     result.value = null
     step.value = 0
+    inlineStatus.value = null
 
     await fetchDispatchContext()
 
@@ -404,6 +432,7 @@ const resetDemo = async () => {
   } catch (error: any) {
     console.error(error)
     ElMessage.error(error.response?.data?.detail || `重置失败: ${error.message || '未知错误'}`)
+    setInlineStatus('重置演示数据失败', '请稍后重试；如果问题持续存在，请刷新页面后再操作。')
   } finally {
     resetting.value = false
   }
@@ -548,6 +577,16 @@ const resetDemo = async () => {
   padding-left: 1.1rem;
   color: #243b53;
   line-height: 1.7;
+}
+
+.status-copy {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.6;
+}
+
+.status-actions {
+  margin-top: 0.75rem;
 }
 
 .workflow-panel {

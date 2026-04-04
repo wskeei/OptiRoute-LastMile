@@ -16,6 +16,16 @@
       路线、距离和状态来自后端真实结果；演示数据来自“重置演示数据”接口。
     </el-alert>
 
+    <el-alert v-if="loadError" type="error" :closable="false" show-icon>
+      <template #title>任务概览加载失败</template>
+      请刷新页面或前往调度中心重新开始。{{ loadError }}
+    </el-alert>
+
+    <el-alert v-else-if="loading" type="info" :closable="false" show-icon>
+      <template #title>正在加载任务概览</template>
+      正在读取样本、历史计划和工作量数据。
+    </el-alert>
+
     <section class="workflow-grid">
       <article class="workflow-card section-card">
         <header class="section-head">
@@ -84,7 +94,13 @@
       </article>
     </section>
 
-    <section class="chart-grid">
+    <section v-if="!loadError && stats.totalPlans === 0" class="section-card empty-panel">
+      <h2>还没有可复盘的调度结果</h2>
+      <p>先去调度中心重置演示数据并发起一次调度，监控和排行图表才会出现。</p>
+      <router-link class="primary-link" to="/dispatch">前往调度中心</router-link>
+    </section>
+
+    <section v-else-if="!loadError" class="chart-grid">
       <article class="section-card">
         <header class="section-head">
           <div>
@@ -113,6 +129,7 @@ import { onMounted, ref } from 'vue'
 import axios from 'axios'
 import * as echarts from 'echarts'
 
+import { getCompletedPlans, getRecentCompletedPlans } from '../lib/analytics'
 import { ONBOARDING_STEPS } from '../lib/ux'
 
 const stats = ref({
@@ -123,8 +140,12 @@ const stats = ref({
 })
 const chartRef = ref()
 const courierChartRef = ref()
+const loading = ref(true)
+const loadError = ref('')
 
 onMounted(async () => {
+  loading.value = true
+  loadError.value = ''
   try {
     const [packagesRes, couriersRes, plansRes, rankRes] = await Promise.all([
       axios.get('/api/v1/delivery/packages'),
@@ -136,9 +157,7 @@ onMounted(async () => {
     stats.value.totalPackages = packagesRes.data.length
     stats.value.totalCouriers = couriersRes.data.length
 
-    const completedPlans = plansRes.data.filter(
-      (plan: any) => (plan.status === 'READY' || plan.status === 'COMPLETED') && plan.routes?.length > 0
-    )
+    const completedPlans = getCompletedPlans(plansRes.data)
     stats.value.totalPlans = completedPlans.length
 
     const totalDistance = completedPlans.reduce(
@@ -154,7 +173,7 @@ onMounted(async () => {
 
     if (chartRef.value && completedPlans.length > 0) {
       const chart = echarts.init(chartRef.value)
-      const recentPlans = completedPlans.slice(0, 8).reverse()
+      const recentPlans = getRecentCompletedPlans(plansRes.data, 8)
       const dates = recentPlans.map((plan: any) => new Date(plan.created_at).toLocaleDateString('zh-CN'))
       const distances = recentPlans.map(
         (plan: any) =>
@@ -206,6 +225,9 @@ onMounted(async () => {
     }
   } catch (error) {
     console.error(error)
+    loadError.value = error instanceof Error ? error.message : '无法连接到概览接口。'
+  } finally {
+    loading.value = false
   }
 })
 </script>
@@ -384,6 +406,23 @@ onMounted(async () => {
   margin: 0;
   color: #52606d;
   line-height: 1.5;
+}
+
+.empty-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.empty-panel h2 {
+  margin: 0;
+  color: #102a43;
+}
+
+.empty-panel p {
+  margin: 0;
+  color: #52606d;
+  line-height: 1.6;
 }
 
 .chart-host {

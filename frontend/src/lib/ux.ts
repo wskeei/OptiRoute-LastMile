@@ -71,6 +71,14 @@ export const NAV_ITEMS: NavItem[] = [
   }
 ]
 
+export const PRIMARY_NAV_ITEMS = NAV_ITEMS.filter((item) =>
+  ['/dispatch', '/monitor', '/history', '/dashboard'].includes(item.path)
+)
+
+export const SECONDARY_NAV_ITEMS = NAV_ITEMS.filter((item) =>
+  ['/packages', '/couriers', '/analytics', '/settings'].includes(item.path)
+)
+
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     title: '1. 重置演示数据',
