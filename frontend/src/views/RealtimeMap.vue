@@ -160,8 +160,8 @@ const drawCouriers = () => {
               <span class="name">${courier.name}</span>
             </div>
           `,
-          iconSize: [0, 0],
-          iconAnchor: [0, 0]
+          iconSize: [96, 32],
+          iconAnchor: [48, 16]
         })
         const marker = L.marker(courier.currentPos, { icon }).addTo(map)
         courierMarkers.push(marker)
@@ -281,13 +281,13 @@ const resetSimulation = () => {
 }
 
 :deep(.courier-marker-inner) {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transform: translate(-50%, -50%); /* Centers the marker exactly on the coordinate */
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
+  width: 96px;
+  min-height: 32px;
+  box-sizing: border-box;
   padding: 4px 8px;
   border-radius: 12px;
   color: white;
@@ -296,12 +296,13 @@ const resetSimulation = () => {
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   border: 2px solid white;
-  transition: transform 0.2s; /* Smooth visual effects if needed */
+  transform-origin: center;
+  transition: transform 0.2s;
 }
 
 :deep(.courier-marker-inner:hover) {
   z-index: 1000;
-  transform: translate(-50%, -50%) scale(1.1);
+  transform: scale(1.06);
 }
 
 @media (max-width: 640px) {
