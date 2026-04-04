@@ -127,7 +127,8 @@ const drawRoutesAndPackages = () => {
       route.geo_json.coordinates.slice(1, -1).forEach((coord: any, pkgIdx: number) => {
         const icon = L.divIcon({
           html: `<div style="background:${color};color:white;width:24px;height:24px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;">${pkgIdx + 1}</div>`,
-          iconSize: [24, 24]
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
         })
         const marker = L.marker(toLatLng(coord as GeoJsonCoord), { icon }).addTo(map)
         
