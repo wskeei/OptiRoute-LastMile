@@ -29,11 +29,11 @@ const passthroughStub = (tag = 'div') =>
     }
   })
 
-const mountApp = () => {
+const mountApp = (width = 900) => {
   Object.defineProperty(window, 'innerWidth', {
     configurable: true,
     writable: true,
-    value: 900
+    value: width
   })
 
   return mount(App, {
@@ -67,5 +67,14 @@ describe('App shell', () => {
 
     expect(wrapper.text()).not.toContain('先重置演示数据，再启动调度，然后查看路线结果。')
     expect(wrapper.text()).not.toContain('主要操作保留在上方，分析和系统页面收纳在“更多页面”。')
+  })
+
+  it('adds a real collapsed layout state on desktop when the sidebar toggle is pressed', async () => {
+    const wrapper = mountApp(1280)
+
+    await wrapper.get('button.sidebar-toggle').trigger('click')
+
+    expect(wrapper.get('.app-shell').classes()).toContain('shell-collapsed')
+    expect(wrapper.get('.sidebar').classes()).toContain('collapsed')
   })
 })

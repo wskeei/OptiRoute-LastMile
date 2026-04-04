@@ -2,7 +2,11 @@
   <div v-if="isAuthPage" class="auth-layout">
     <router-view />
   </div>
-  <div v-else class="app-shell">
+  <div
+    v-else
+    class="app-shell"
+    :class="{ 'shell-collapsed': collapsed && !isCompactNavigation }"
+  >
     <aside class="sidebar" :class="{ collapsed }">
       <div class="sidebar-head">
         <router-link class="brand" to="/dispatch">
@@ -199,6 +203,10 @@ onBeforeUnmount(() => {
     linear-gradient(180deg, #f5f7fa 0%, #edf2f7 100%);
 }
 
+.app-shell.shell-collapsed {
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -215,6 +223,24 @@ onBeforeUnmount(() => {
 
 .sidebar.collapsed .nav-link {
   justify-content: center;
+}
+
+.app-shell.shell-collapsed .sidebar {
+  padding-inline: 0.875rem;
+}
+
+.app-shell.shell-collapsed .sidebar-head {
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.app-shell.shell-collapsed .brand {
+  width: 100%;
+  justify-content: center;
+}
+
+.app-shell.shell-collapsed .nav-link {
+  padding-inline: 0.6rem;
 }
 
 .sidebar-head {
