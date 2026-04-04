@@ -143,7 +143,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed, nextTick } from 'vue'
 import axios from 'axios'
 import * as echarts from 'echarts'
 import { ONBOARDING_STEPS } from '../lib/ux'
@@ -171,6 +171,8 @@ const loadPlans = async () => {
   try {
     const res = await axios.get('/api/v1/dispatch/plans')
     plans.value = getCompletedPlans(res.data)
+    loading.value = false
+    await nextTick()
     if (plans.value.length > 0) {
       initTrendChart()
     }
@@ -178,7 +180,9 @@ const loadPlans = async () => {
     console.error(e)
     loadError.value = '请刷新页面，或先前往调度中心生成第一条调度结果。'
   } finally {
-    loading.value = false
+    if (loading.value) {
+      loading.value = false
+    }
   }
 }
 
