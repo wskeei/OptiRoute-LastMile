@@ -1,89 +1,83 @@
 # SmartDispatch-AI: Intelligent Last-Mile Delivery System
 
 [[中文文档](README_zh-CN.md)]
-> *AI-Driven Logistics Optimization with Real-World Constraints*
+> *AI-driven last-mile dispatch built around constrained clustering and route search*
 
-**SmartDispatch-AI** is a comprehensive full-stack solution designed to tackle the "Last Mile" delivery challenge. By synergizing **K-Means Clustering** for region partitioning and **Genetic Algorithms (GA)** for route optimization, it generates highly efficient delivery plans that respect potential real-world constraints like courier capacity.
+**SmartDispatch-AI** is a full-stack demo system for last-mile delivery planning. The current optimization pipeline uses a **two-stage heuristic**:
 
-The system features a **FastAPI** backend for high-performance computing and a **Vue 3** frontend for an immersive, data-rich user experience.
+1. **Constrained K-Means** partitions pending packages into courier-sized regions.
+2. A **custom Genetic Algorithm (GA)** solves the delivery order inside each region as a TSP-style route.
 
-![System Screenshot](https://i.imgur.com/your-screenshot.png)
+The backend is built with **FastAPI** and the frontend with **Vue 3**, focusing on route visualization, dispatch history, courier workload views, and demo-data driven experimentation.
 
-## 🚀 Key Features
+## Key Features
 
-### 🧠 Intelligent Core
-- **Hybrid Algorithm Engine**: Combines **Constrained K-Means** (balanced clustering) with **Genetic Algorithms** (TSP solver) to minimize total travel distance and cost.
-- **Dynamic Capacity Management**: Automatically adjusts courier loads based on real-time package volume and individual weight/volume constraints (e.g., max 150kg).
-- **Real-World Data Simulation**: Integrated with real geographic data from **Shanghai**, generating realistic package addresses and coordinates for testing.
+### Intelligent Core
+- **Hybrid optimization pipeline**: constrained K-Means for spatial partitioning, then GA-based route optimization for each cluster.
+- **Capacity-aware assignment**: package weights and courier capacity limits are considered during clustering.
+- **Depot-aware clustering**: cluster centers are initialized around the station and constrained by maximum distance from the depot.
+- **Improved GA search**: the route solver includes tournament selection, order crossover, swap mutation, elite retention, adaptive mutation, and a `2-opt` local search pass.
 
-### 🖥️ Interactive Visualization
-- **Realtime Monitor**: Watch couriers move along their optimized paths in real-time, with dynamic load tracking and interactive popups.
-- **Smart Dispatch Center**: Visual progress of the algorithm evolution, showing how routes improve generation by generation.
-- **Ant-Path Animation**: Animated path visualizations on Leaflet maps to clearly indicate delivery direction and flow.
+### Visualization and Operations
+- **Smart Dispatch Center**: trigger a dispatch run, inspect optimization progress, and view generated routes on a map.
+- **Realtime Map**: replay the latest dispatch result with route overlays and courier status cards.
+- **Analytics and History**: review completed plans, compare route metrics, and inspect courier workload trends.
+- **System actions**: reset demo data, clear dispatch history, and inspect package or courier records from the UI.
 
-### 📊 Comprehensive Management
-- **One-Click Dispatch**: Trigger complex optimization tasks with a single button.
-- **Data Analytics**: Insightful dashboards showing courier ranking, efficiency trends, and cost-saving metrics.
-- **Lifecycle Tracking**: Full management of package states from `PENDING` -> `ASSIGNED` -> `IN_TRANSIT` -> `DELIVERED`.
-- **System Control**: Reset demo data or clear history instantly via system settings.
-    - **Dashboard**: Get a quick overview of daily stats, efficiency trends, and courier performance.
-    - **Package Management**: Track packages through their entire lifecycle (pending, in-transit, delivered).
-    - **Courier Workbench**: Monitor courier status, workload, and performance analytics.
-    - **Analytics & History**: Review past optimization results and analyze performance metrics.
-- **Configurable**: Easily adjust algorithm parameters (K-value, generations) directly from the UI.
+## Current Algorithm Behavior
 
-## 🛠️ Technology Stack
+The current backend implementation uses fixed runtime settings inside the dispatch service:
+
+- `k = min(available_couriers, pending_packages)`
+- constrained K-Means with `max_distance_from_depot = 50.0`
+- GA with `population_size = 50`
+- GA with `generations = 100`
+
+The frontend currently shows configurable sliders for `k`, generations, and population size, but those values are not applied by the backend dispatch pipeline yet. The settings page stores defaults in browser `localStorage`; it does not persist algorithm parameters to the server.
+
+## Technology Stack
 
 ### Backend
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
-- **Language**: Python 3.11
-- **Database**: [SQLite](https://www.sqlite.org/) (for simplicity, via SQLAlchemy)
+- **Language**: Python 3.11+
+- **Database**: [SQLite](https://www.sqlite.org/) via SQLAlchemy
 - **Migrations**: [Alembic](https://alembic.sqlalchemy.org/)
 - **Algorithms**:
-    - [scikit-learn](https://scikit-learn.org/) for K-Means clustering.
-    - Custom-built Genetic Algorithm using NumPy.
+  - Custom constrained K-Means implementation using NumPy and Haversine distance
+  - Custom GA-based TSP solver using NumPy
 - **Package Manager**: [uv](https://github.com/astral-sh/uv)
 
+Note: `scikit-learn` is still listed as a dependency, but the current dispatch flow does not call `sklearn.cluster.KMeans`.
+
 ### Frontend
-- **Framework**: [Vue 3](https://vuejs.org/) (Composition API with `<script setup>`)
+- **Framework**: [Vue 3](https://vuejs.org/) with `<script setup>`
 - **Language**: TypeScript
 - **UI Toolkit**: [Element Plus](https://element-plus.org/)
 - **Mapping**: [Leaflet](https://leafletjs.com/) + [Leaflet Ant Path](https://github.com/rubenspgcavalcante/leaflet-ant-path)
 - **Charting**: [ECharts](https://echarts.apache.org/)
 - **State Management**: [Pinia](https://pinia.vuejs.org/)
 - **Build Tool**: [Vite](https://vitejs.dev/)
-- **Design**: Glassmorphism with gradient backgrounds
 
-## ⚙️ Setup and Installation
+## Setup and Installation
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+ and npm
+- Python 3.11+
+- Node.js 18+
 - `uv` installed (`pip install uv`)
 
 ### 1. Backend Setup
 
 ```bash
-# Navigate to the backend directory
 cd backend
-
-# Install dependencies (creates virtual environment automatically)
 uv sync
-
-# Apply database migrations
 uv run alembic upgrade head
-
-# Initialize database with required data (stations, couriers, packages)
 uv run python seed_shanghai_data.py
 ```
 
 ### 2. Frontend Setup
 
 ```bash
-# Navigate to the frontend directory
 cd frontend
-
-# Install dependencies
 npm install
 ```
 
@@ -92,25 +86,22 @@ npm install
 If this repository was copied from a Windows machine, do not reuse the runtime artifacts directly on Linux:
 
 ```bash
-# Backend: reset the local SQLite runtime files
 rm -f backend/sql_app.db backend/sql_app.db-shm backend/sql_app.db-wal
-
-# Frontend: reinstall dependencies in the Linux environment
 rm -rf frontend/node_modules
 cd frontend && npm install
 ```
 
-The frontend npm scripts call the local CLIs through `node`, so they no longer depend on executable bits preserved from the source OS.
+The frontend npm scripts call local CLIs through `node`, so they do not rely on executable bits preserved from another OS.
 
 ### One-Command Startup
 
-From the repository root, you can use the built-in startup scripts:
+From the repository root:
 
 ```bash
-# Daily use: reset DB, run migrations, seed demo data, start backend + frontend
+# Reset DB, migrate, seed demo data, start backend + frontend
 bash scripts/dev-up.sh
 
-# First-time setup on a new machine: install deps, reset DB, migrate, seed, start all services
+# First-time setup on a new machine
 bash scripts/bootstrap-and-up.sh
 ```
 
@@ -120,69 +111,45 @@ Optional environment variables:
 BACKEND_HOST=0.0.0.0 BACKEND_PORT=8000 FRONTEND_HOST=0.0.0.0 FRONTEND_PORT=5173 bash scripts/dev-up.sh
 ```
 
-## 🚀 Running the Application
+## Running the Application
 
-1.  **Start the Backend Server**:
-    ```bash
-    cd backend
-    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    ```
-    The API will be available at `http://localhost:8000`.
+1. Start the backend:
+   ```bash
+   cd backend
+   uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   ```
+2. Start the frontend:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+3. Open `http://localhost:5173`, log in or register, then:
+   - go to `AI调度中心`
+   - click `重置演示数据`
+   - click `开始AI调度`
+   - watch routes appear while the backend updates plan progress
 
-    > **Note**: On Windows, if the server keeps restarting due to SQLite file changes, use:
-    > ```bash
-    > uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
-    > ```
+## Repository Notes
 
-2.  **Start the Frontend Server**:
-    ```bash
-    cd frontend
-    npm run dev
-    ```
-    The application will be accessible at `http://localhost:5173`.
+- [backend/README.md](backend/README.md): backend service summary and algorithm entry points
+- [frontend/README.md](frontend/README.md): frontend app summary and page map
+- [docs/快递末端配送系统设计文档.md](docs/快递末端配送系统设计文档.md): design-oriented project document
 
-3.  **First-Time Usage**:
-    - Navigate to **AI调度中心** (AI Dispatch Center)
-    - Click **"🔄 重置演示数据"** (Reset Demo Data) to initialize random packages and couriers
-    - Click **"🚀 开始AI调度"** (Start AI Dispatch) to run the optimization
-    - Watch the algorithm progress through K-Means clustering and genetic algorithm optimization
-    - View the optimized routes visualized on the map with animated paths
+## Troubleshooting
 
-## 🎨 Design Features
+### Database Schema Errors
 
-- **Glassmorphism UI**: Semi-transparent cards with backdrop blur effects
-- **Gradient Backgrounds**: Modern blue-purple gradient theme
-- **8 Core Pages**: Dashboard, AI Dispatch Center, Package Flow, Courier Workbench, Real-time Monitor, Analytics, Route History, Settings
-- **Animated Route Visualization**: Ant-path animations showing delivery direction
-- **Real-time Data**: Live updates from backend APIs
-
-## 🔧 Troubleshooting
-
-### Database Schema Errors (500 Internal Server Error)
-
-If you encounter database errors like `no such column` or `no such table`:
-
-**Solution** - Reset the database:
+If you hit errors such as `no such column` or `no such table`:
 
 ```bash
 cd backend
-
-# Remove old database
 rm -f sql_app.db sql_app.db-shm sql_app.db-wal
-
-# Re-create database with correct schema
 uv run alembic upgrade head
-
-# Re-seed initial data
 uv run python seed_shanghai_data.py
-
-# Restart the backend
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
 ### Backend Keeps Restarting on Windows
-
-If the backend server keeps restarting due to SQLite file changes:
 
 ```bash
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app
