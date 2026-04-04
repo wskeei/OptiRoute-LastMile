@@ -2,6 +2,7 @@ import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
+import * as echarts from 'echarts'
 
 import Analytics from '../views/Analytics.vue'
 import Dashboard from '../views/Dashboard.vue'
@@ -125,5 +126,64 @@ describe('page-level persistent feedback', () => {
     expect(wrapper.text()).toContain('演示数据与估算结果会单独标注')
     expect(wrapper.text()).not.toContain('当前是演示环境')
     expect(wrapper.text()).not.toContain('关键入口')
+  })
+
+  it('initializes dashboard charts after loading a completed plan', async () => {
+    const completedPlan = {
+      id: 101,
+      status: 'READY',
+      created_at: '2026-04-04T08:30:00Z',
+      routes: [
+        {
+          courier_id: 11,
+          geo_json: { total_distance_km: 18.4, package_count: 7 }
+        }
+      ]
+    }
+
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ id: 1, status: 'PENDING' }] })
+      .mockResolvedValueOnce({ data: [{ id: 11, status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: [completedPlan] })
+      .mockResolvedValueOnce({ data: [{ name: '张三', delivered_count: 12 }] })
+
+    mountWithStubs(Dashboard)
+    await flushPromises()
+
+    expect(echarts.init).toHaveBeenCalledTimes(2)
+  })
+
+  it('initializes analytics charts after loading successful plan, package, and courier data', async () => {
+    const completedPlan = {
+      id: 17,
+      status: 'READY',
+      created_at: '2026-04-03T12:00:00Z',
+      routes: [
+        {
+          courier_id: 21,
+          geo_json: { total_distance_km: 24.1, package_count: 9 }
+        }
+      ]
+    }
+
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [completedPlan] })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 1, status: 'PENDING', weight: 3.5 },
+          { id: 2, status: 'DELIVERED', weight: 2.4 }
+        ]
+      })
+      .mockResolvedValueOnce({
+        data: [
+          { id: 21, name: '李四', status: 'AVAILABLE' },
+          { id: 22, name: '王五', status: 'BUSY' }
+        ]
+      })
+
+    mountWithStubs(Analytics)
+    await flushPromises()
+
+    expect(echarts.init).toHaveBeenCalledTimes(4)
   })
 })

@@ -2,6 +2,7 @@ import { defineComponent, h } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import axios from 'axios'
+import * as echarts from 'echarts'
 
 import RouteHistory from '../views/RouteHistory.vue'
 
@@ -147,5 +148,49 @@ describe('RouteHistory', () => {
     expect(wrapper.text()).toContain('总重量')
     expect(wrapper.text()).toContain('K值')
     expect(wrapper.text()).toContain('遗传代数')
+  })
+
+  it('initializes the history trend chart after loading completed plans', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: [
+        {
+          id: 19,
+          title: '晚间调度',
+          status: 'READY',
+          created_at: '2026-04-04T18:30:00Z',
+          routes: [
+            {
+              id: 301,
+              name: '路线1',
+              geo_json: { total_distance_km: 16.8, package_count: 9, total_weight: 20.5 }
+            }
+          ]
+        }
+      ]
+    })
+
+    mount(RouteHistory, {
+      global: {
+        stubs: {
+          'el-button': ButtonStub,
+          'el-checkbox': genericStub('el-checkbox'),
+          'el-checkbox-group': genericStub('el-checkbox-group'),
+          'el-collapse': genericStub('el-collapse'),
+          'el-collapse-item': genericStub('el-collapse-item'),
+          'el-descriptions': genericStub('el-descriptions'),
+          'el-descriptions-item': DescriptionsItemStub,
+          'el-divider': genericStub('el-divider'),
+          'el-drawer': genericStub('el-drawer'),
+          'el-table': genericStub('el-table'),
+          'el-table-column': genericStub('el-table-column'),
+          'el-tag': genericStub('el-tag'),
+          'router-link': RouterLinkStub
+        }
+      }
+    })
+
+    await flushPromises()
+
+    expect(echarts.init).toHaveBeenCalledTimes(1)
   })
 })
