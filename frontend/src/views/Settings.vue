@@ -41,6 +41,31 @@
       <article class="section-card">
         <header class="section-head">
           <div>
+            <h2>主配送站</h2>
+            <p>统一维护调度、监控和演示数据使用的当前主站点。</p>
+          </div>
+        </header>
+
+        <el-form :model="stationForm" label-width="96px" class="station-form">
+          <el-form-item label="站点名称">
+            <el-input v-model="stationForm.name" />
+          </el-form-item>
+          <el-form-item label="站点地址">
+            <el-input v-model="stationForm.address" />
+          </el-form-item>
+          <el-form-item label="纬度">
+            <el-input-number v-model="stationForm.latitude" :step="0.0001" />
+          </el-form-item>
+          <el-form-item label="经度">
+            <el-input-number v-model="stationForm.longitude" :step="0.0001" />
+          </el-form-item>
+          <el-button type="primary" @click="saveMainStation">保存主配送站</el-button>
+        </el-form>
+      </article>
+
+      <article class="section-card">
+        <header class="section-head">
+          <div>
             <h2>数据维护</h2>
             <p>保留明确、可解释的重置动作。</p>
           </div>
@@ -62,6 +87,22 @@
             </div>
             <el-button type="danger" @click="clearHistory">清空历史</el-button>
           </div>
+
+          <div class="action-item">
+            <div>
+              <strong>按当前站点重置</strong>
+              <p>围绕当前主配送站刷新演示样本，不切换城市。</p>
+            </div>
+            <el-button type="warning" @click="resetDemoAroundCurrentStation">按当前站点重置</el-button>
+          </div>
+
+          <div class="action-item">
+            <div>
+              <strong>随机城市重置</strong>
+              <p>切换到另一个全国城市站点后，再重新生成演示样本。</p>
+            </div>
+            <el-button type="danger" @click="resetDemoWithRandomStation">随机城市重置</el-button>
+          </div>
         </div>
       </article>
 
@@ -75,9 +116,16 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 
 const stats = ref({ totalPackages: 0, totalCouriers: 0, totalStations: 1, totalPlans: 0 })
+const stationForm = ref({
+  name: '',
+  address: '',
+  latitude: 31.2304,
+  longitude: 121.4737
+})
 
 onMounted(() => {
   loadStats()
+  loadCurrentStation()
 })
 
 const loadStats = async () => {
@@ -90,8 +138,33 @@ const loadStats = async () => {
     stats.value.totalPackages = packagesRes.data.length
     stats.value.totalCouriers = couriersRes.data.length
     stats.value.totalPlans = plansRes.data.length
+    stats.value.totalStations = 1
   } catch (error) {
     console.error(error)
+  }
+}
+
+const loadCurrentStation = async () => {
+  try {
+    const stationRes = await axios.get('/api/v1/delivery/stations/current')
+    stationForm.value = {
+      name: stationRes.data.name,
+      address: stationRes.data.address,
+      latitude: stationRes.data.latitude,
+      longitude: stationRes.data.longitude
+    }
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+const saveMainStation = async () => {
+  try {
+    await axios.patch('/api/v1/delivery/stations/current', stationForm.value)
+    await loadStats()
+    ElMessage.success('主配送站已更新')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '更新主配送站失败')
   }
 }
 
@@ -136,6 +209,28 @@ const clearHistory = async () => {
     if (error !== 'cancel') {
       ElMessage.error(error.response?.data?.detail || '清空失败')
     }
+  }
+}
+
+const resetDemoAroundCurrentStation = async () => {
+  try {
+    await axios.post('/api/v1/dispatch/reset-demo', { randomize_station: false })
+    await loadCurrentStation()
+    await loadStats()
+    ElMessage.success('已按当前配送站重置样本')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '重置失败')
+  }
+}
+
+const resetDemoWithRandomStation = async () => {
+  try {
+    await axios.post('/api/v1/dispatch/reset-demo', { randomize_station: true })
+    await loadCurrentStation()
+    await loadStats()
+    ElMessage.success('已随机切换城市并重置样本')
+  } catch (error: any) {
+    ElMessage.error(error.response?.data?.detail || '随机重置失败')
   }
 }
 </script>
@@ -225,6 +320,12 @@ const clearHistory = async () => {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+.station-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .action-item {

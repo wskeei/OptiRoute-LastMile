@@ -64,6 +64,7 @@ import { ElMessage } from 'element-plus'
 const couriers = ref<any[]>([])
 const dialogVisible = ref(false)
 const dialogWidth = ref('30rem')
+const currentStationId = ref<number | null>(null)
 const form = reactive({
   name: '',
   phone: '',
@@ -81,8 +82,21 @@ const fetchCouriers = async () => {
   }
 }
 
+const loadCurrentStation = async () => {
+  try {
+    const stationRes = await axios.get('/api/v1/delivery/stations/current')
+    currentStationId.value = stationRes.data.id
+    form.station_id = stationRes.data.id
+  } catch (e) {
+    console.error(e)
+  }
+}
+
 const handleAdd = async () => {
   try {
+    if (currentStationId.value) {
+      form.station_id = currentStationId.value
+    }
     await axios.post('/api/v1/delivery/couriers', form)
     ElMessage.success('添加成功')
     dialogVisible.value = false
@@ -100,6 +114,7 @@ const syncDialogWidth = () => {
 onMounted(() => {
   syncDialogWidth()
   window.addEventListener('resize', syncDialogWidth)
+  loadCurrentStation()
   fetchCouriers()
 })
 
