@@ -66,7 +66,7 @@ export const NAV_ITEMS: NavItem[] = [
   },
   {
     path: '/settings',
-    label: '系统说明',
+    label: '系统设置',
     description: '维护说明',
     icon: 'Setting'
   }

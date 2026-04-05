@@ -72,5 +72,6 @@ describe('ux config', () => {
       '复盘记录',
       '查看概览'
     ])
+    expect(NAV_ITEMS.find((item) => item.path === '/settings')?.label).toBe('系统设置')
   })
 })
