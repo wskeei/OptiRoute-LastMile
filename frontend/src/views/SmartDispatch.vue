@@ -1,10 +1,12 @@
 <template>
   <div class="dispatch page-shell">
-    <section class="page-hero">
-      <div>
+    <section class="dispatch-toolbar section-card">
+      <div class="toolbar-copy">
         <span class="eyebrow">调度中心</span>
-        <h1>准备样本后直接发起调度。</h1>
-        <p class="page-summary">路线结果会在地图和状态区持续刷新。</p>
+        <div class="toolbar-title">
+          <h1>路线调度</h1>
+          <p class="page-summary">样本就绪后直接发起调度，结果会在地图中持续刷新。</p>
+        </div>
       </div>
 
       <div class="hero-actions">
@@ -17,91 +19,81 @@
       </div>
     </section>
 
-    <section class="dispatch-layout">
-      <article class="section-card map-panel">
-        <header class="section-head">
-          <div>
-            <h2>路线地图</h2>
-            <p>最近一次结果会在这里刷新。</p>
-          </div>
-        </header>
-
-        <div class="map-shell">
-          <div ref="mapRef" class="map-view"></div>
-
-          <aside class="info-panel">
-            <section class="info-block">
-              <h3>当前样本</h3>
-              <div class="fact-list">
-                <div class="fact-item">
-                  <span>待调度包裹</span>
-                  <strong>{{ pendingPackageCount }}</strong>
-                </div>
-                <div class="fact-item">
-                  <span>可用快递员</span>
-                  <strong>{{ availableCourierCount }}</strong>
-                </div>
-                <div class="fact-item">
-                  <span>配送站</span>
-                  <strong>{{ stationName }}</strong>
-                </div>
-              </div>
-            </section>
-
-            <details class="info-block truth-details">
-              <summary>查看执行说明</summary>
-              <ul class="note-list">
-                <li v-for="item in DISPATCH_TRUTH_NOTES" :key="item">{{ item }}</li>
-              </ul>
-            </details>
-
-            <section v-if="inlineStatus" class="info-block">
-              <h3>{{ inlineStatus.title }}</h3>
-              <p class="status-copy">{{ inlineStatus.message }}</p>
-              <div v-if="inlineStatus.action === 'retry-dispatch'" class="status-actions">
-                <el-button type="primary" size="small" :disabled="!canDispatch || loading" @click="startDispatch">
-                  重新发起调度
-                </el-button>
-              </div>
-            </section>
-
-            <section v-if="loading" class="info-block">
-              <h3>调度进度</h3>
-              <el-steps :active="step" direction="vertical" size="small">
-                <el-step title="准备数据" />
-                <el-step title="聚类分配" />
-                <el-step title="路径优化" />
-                <el-step title="结果输出" />
-              </el-steps>
-            </section>
-
-            <section v-else-if="result" class="info-block">
-              <h3>本次结果</h3>
-              <div class="result-grid">
-                <div>
-                  <span>路线数</span>
-                  <strong>{{ result.routeCount }}</strong>
-                </div>
-                <div>
-                  <span>总距离</span>
-                  <strong>{{ result.totalDistance }} km</strong>
-                </div>
-                <div>
-                  <span>最新迭代进度</span>
-                  <strong>{{ result.generation || 0 }} 代</strong>
-                </div>
-              </div>
-            </section>
-          </aside>
+    <section class="dispatch-summary section-card">
+      <div class="summary-group">
+        <div class="summary-head">
+          <h2>样本概览</h2>
+          <p>发起调度前先确认当前可用资源。</p>
         </div>
-      </article>
+        <div class="summary-strip">
+          <article v-for="item in sampleSummary" :key="item.label" class="summary-stat">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+          </article>
+        </div>
+      </div>
 
+      <div class="summary-group">
+        <div class="summary-head">
+          <h2>结果总览</h2>
+          <p>{{ resultStatusCopy }}</p>
+        </div>
+        <div class="summary-strip">
+          <article
+            v-for="item in resultSummary"
+            :key="item.label"
+            class="summary-stat"
+            :class="{ pending: item.pending }"
+          >
+            <span>{{ item.label }}</span>
+            <strong>{{ item.value }}</strong>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="inlineStatus" class="section-card status-card">
+      <div>
+        <h2>{{ inlineStatus.title }}</h2>
+        <p class="status-copy">{{ inlineStatus.message }}</p>
+      </div>
+      <div v-if="inlineStatus.action === 'retry-dispatch'" class="status-actions">
+        <el-button type="primary" size="small" :disabled="!canDispatch || loading" @click="startDispatch">
+          重新发起调度
+        </el-button>
+      </div>
+    </section>
+
+    <section v-if="loading" class="section-card progress-card">
+      <div class="progress-copy">
+        <h2>调度进度</h2>
+        <p>正在生成路线，请稍候。</p>
+      </div>
+      <el-steps :active="step" size="small">
+        <el-step title="准备数据" />
+        <el-step title="聚类分配" />
+        <el-step title="路径优化" />
+        <el-step title="结果输出" />
+      </el-steps>
     </section>
 
     <section v-if="!canDispatch" class="section-card helper-card">
       <h2>先准备样本</h2>
       <p>需要待调度包裹和可用快递员后才能开始。最简单的做法是点击“重置数据”。</p>
     </section>
+
+    <article class="section-card map-panel">
+      <header class="section-head">
+        <div>
+          <h2>路线地图</h2>
+          <p>最近一次调度结果会在这里刷新和保留。</p>
+        </div>
+      </header>
+
+      <div class="map-shell">
+        <div ref="mapRef" class="map-view"></div>
+      </div>
+    </article>
   </div>
 </template>
 
@@ -112,7 +104,6 @@ import L from 'leaflet'
 import 'leaflet-ant-path'
 import { ElMessage } from 'element-plus'
 
-import { DISPATCH_TRUTH_NOTES } from '../lib/ux'
 import { sortPlansByNewest } from '../lib/analytics'
 
 interface DispatchResult {
@@ -145,6 +136,33 @@ const packageLayerGroup = ref<any>(null)
 const routeLayerGroup = ref<any>(null)
 
 const canDispatch = computed(() => pendingPackageCount.value > 0 && availableCourierCount.value > 0)
+const sampleSummary = computed(() => [
+  { label: '待调度包裹', value: pendingPackageCount.value },
+  { label: '可用快递员', value: availableCourierCount.value },
+  { label: '配送站', value: stationName.value }
+])
+const resultSummary = computed(() => [
+  {
+    label: '路线数',
+    value: result.value ? result.value.routeCount : '--',
+    pending: !result.value
+  },
+  {
+    label: '总距离',
+    value: result.value ? `${result.value.totalDistance} km` : '--',
+    pending: !result.value
+  },
+  {
+    label: '最新迭代',
+    value: result.value ? `${result.value.generation || 0} 代` : loading.value ? '进行中' : '--',
+    pending: !result.value
+  }
+])
+const resultStatusCopy = computed(() => {
+  if (loading.value) return '路线正在计算中。'
+  if (result.value) return '已展示最近一次生成的路线结果。'
+  return '调度完成后会在这里更新关键结果。'
+})
 
 const setInlineStatus = (title: string, message: string, action?: 'retry-dispatch') => {
   inlineStatus.value = { title, message, action }
@@ -415,153 +433,169 @@ const resetDemo = async () => {
 .dispatch {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.875rem;
+  min-height: calc(100vh - 3rem);
 }
 
-.page-hero {
+.dispatch-toolbar {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 1rem;
+  padding-block: 1rem;
+}
+
+.toolbar-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.toolbar-title {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .eyebrow {
   display: inline-flex;
-  margin-bottom: 0.75rem;
   color: #486581;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.page-hero h1 {
-  margin: 0 0 0.5rem;
+.toolbar-title h1 {
+  margin: 0;
   color: #102a43;
-  font-size: clamp(1.8rem, 3vw, 2.4rem);
+  font-size: clamp(1.45rem, 2.4vw, 1.9rem);
 }
 
 .page-summary {
   margin: 0;
-  max-width: 42rem;
+  max-width: 40rem;
   color: #52606d;
   line-height: 1.6;
 }
 
 .hero-actions {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: 0.75rem;
-  align-items: flex-end;
+  align-items: center;
 }
 
-.dispatch-layout {
-  display: block;
+.dispatch-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  padding-block: 1rem;
 }
 
-.section-head {
+.summary-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.summary-head {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: baseline;
   gap: 0.75rem;
-  margin-bottom: 1rem;
 }
 
+.summary-head h2,
+.status-card h2,
+.progress-copy h2,
+.helper-card h2,
 .section-head h2 {
-  margin: 0 0 0.25rem;
+  margin: 0;
   color: #102a43;
-  font-size: 1.1rem;
+  font-size: 1rem;
 }
 
+.summary-head p,
+.progress-copy p,
 .section-head p {
   margin: 0;
   color: #52606d;
   line-height: 1.5;
 }
 
-.map-panel {
-  min-height: 38rem;
-}
-
-.map-shell {
-  min-height: 0;
+.summary-strip {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 18rem;
-  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
-.map-view {
-  min-height: 32rem;
-  border-radius: 1rem;
-  overflow: hidden;
-  border: 1px solid rgba(24, 74, 104, 0.08);
-}
-
-.info-panel {
+.summary-stat {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-}
-
-.info-block {
-  padding: 1rem;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
   border-radius: 1rem;
   background: rgba(247, 250, 252, 0.92);
   border: 1px solid rgba(24, 74, 104, 0.08);
 }
 
-.info-block h3 {
-  margin: 0 0 0.85rem;
+.summary-stat.pending {
+  background: rgba(247, 250, 252, 0.7);
+}
+
+.summary-stat span {
+  color: #486581;
+  font-size: 0.82rem;
+}
+
+.summary-stat strong {
   color: #102a43;
-  font-size: 1rem;
+  font-size: 1.22rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
-.fact-list,
-.result-grid {
+.status-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.progress-card {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.75rem;
+  grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
 }
 
-.fact-item,
-.result-grid div {
+.section-head {
+  display: flex;
+  margin-bottom: 0.85rem;
+}
+
+.map-panel {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  min-height: 0;
 }
 
-.fact-item span,
-.result-grid span {
-  color: #486581;
-  font-size: 0.85rem;
+.map-shell {
+  flex: 1;
+  min-height: clamp(32rem, calc(100vh - 18rem), 48rem);
 }
 
-.fact-item strong,
-.result-grid strong {
-  color: #102a43;
-  font-size: 1.25rem;
-}
-
-.note-list {
-  margin: 0;
-  padding-left: 1.1rem;
-  color: #243b53;
-  line-height: 1.7;
-}
-
-.truth-details summary {
-  cursor: pointer;
-  color: #184a68;
-  font-weight: 600;
-  list-style: none;
-}
-
-.truth-details summary::-webkit-details-marker {
-  display: none;
-}
-
-.truth-details[open] summary {
-  margin-bottom: 0.65rem;
+.map-view {
+  height: 100%;
+  min-height: clamp(32rem, calc(100vh - 18rem), 48rem);
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid rgba(24, 74, 104, 0.08);
 }
 
 .status-copy {
@@ -586,14 +620,24 @@ const resetDemo = async () => {
 }
 
 @media (max-width: 1100px) {
-  .dispatch-layout,
-  .map-shell {
+  .dispatch-summary,
+  .progress-card {
     grid-template-columns: 1fr;
+  }
+
+  .summary-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 900px) {
-  .page-hero {
+  .dispatch {
+    min-height: auto;
+  }
+
+  .dispatch-toolbar,
+  .status-card,
+  .summary-head {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -602,12 +646,14 @@ const resetDemo = async () => {
     align-items: flex-start;
   }
 
-  .hero-note {
-    justify-content: flex-start;
+  .dispatch-summary,
+  .summary-strip {
+    grid-template-columns: 1fr;
   }
 
-  .hero-note p {
-    text-align: left;
+  .map-shell,
+  .map-view {
+    min-height: 28rem;
   }
 }
 </style>
