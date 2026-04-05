@@ -37,35 +37,16 @@ def build_package_points_around_station(
     seed: int | None = None,
 ) -> list[dict]:
     rng = random.Random(seed)
-    anchors = []
-
-    for _ in range(rng.randint(5, 8)):
-        radius_km = rng.uniform(0.8, 6.0)
-        angle = rng.uniform(0, math.pi * 2)
-        anchors.append(
-            (
-                station["latitude"] + _km_to_lat(radius_km * math.cos(angle)),
-                station["longitude"] + _km_to_lng(radius_km * math.sin(angle), station["latitude"]),
-            )
-        )
-
     city_name = _extract_city_name(station)
     packages = []
 
     for index in range(count):
-        roll = rng.random()
-        if roll < 0.65:
-            radius_km = rng.uniform(0.8, 3.0)
-        elif roll < 0.90:
-            radius_km = rng.uniform(3.0, 8.0)
-        else:
-            radius_km = rng.uniform(8.0, 15.0)
-
-        anchor_lat, anchor_lng = rng.choice(anchors)
-        angle = rng.uniform(0, math.pi * 2)
-        local_jitter_km = min(1.2, radius_km * 0.35)
-        latitude = anchor_lat + _km_to_lat(local_jitter_km * math.cos(angle))
-        longitude = anchor_lng + _km_to_lng(local_jitter_km * math.sin(angle), station["latitude"])
+        # Match the older demo feel: spread points across the full 0-15km disk
+        # instead of concentrating them around a small number of neighborhood anchors.
+        radius_km = 15 * math.sqrt(rng.random())
+        angle = rng.random() * 2 * math.pi
+        latitude = station["latitude"] + _km_to_lat(radius_km * math.cos(angle))
+        longitude = station["longitude"] + _km_to_lng(radius_km * math.sin(angle), station["latitude"])
         district_name = rng.choice(DISTRICT_NAMES)
         road_name = rng.choice(ROAD_NAMES)
         building_no = rng.randint(1, 999)
