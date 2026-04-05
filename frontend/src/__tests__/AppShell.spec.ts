@@ -69,6 +69,19 @@ describe('App shell', () => {
     expect(wrapper.text()).not.toContain('主要操作保留在上方，分析和系统页面收纳在“更多页面”。')
   })
 
+  it('does not show the environment badge text in the sidebar brand area', () => {
+    const wrapper = mountApp(1280)
+
+    expect(wrapper.text()).not.toContain('演示环境')
+  })
+
+  it('shows the shorter product title in the sidebar brand area', () => {
+    const wrapper = mountApp(1280)
+
+    expect(wrapper.text()).toContain('配送调度系统')
+    expect(wrapper.text()).not.toContain('末端配送调度系统')
+  })
+
   it('adds a real collapsed layout state on desktop when the sidebar toggle is pressed', async () => {
     const wrapper = mountApp(1280)
 

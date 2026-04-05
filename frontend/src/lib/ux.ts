@@ -16,7 +16,7 @@ export const PRIMARY_ROUTE = '/dispatch'
 export const DEFAULT_ROUTE = PRIMARY_ROUTE
 export const AUTH_REDIRECT_ROUTE = PRIMARY_ROUTE
 
-export const PRODUCT_NAME = '末端配送调度演示系统'
+export const PRODUCT_NAME = '配送调度系统'
 export const PRODUCT_ENVIRONMENT_LABEL = '演示环境'
 export const PRODUCT_SUMMARY = '调度、监控与复盘演示。'
 export const PRODUCT_ENVIRONMENT_NOTE = '演示数据与估算结果会单独标注。'

@@ -5,6 +5,7 @@ import {
   DEFAULT_ROUTE,
   DISPATCH_TRUTH_NOTES,
   PRODUCT_ENVIRONMENT_LABEL,
+  PRODUCT_NAME,
   NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
   SECONDARY_NAV_ITEMS,
@@ -63,6 +64,7 @@ describe('ux config', () => {
   })
 
   it('keeps shared navigation copy short and scannable', () => {
+    expect(PRODUCT_NAME).toBe('配送调度系统')
     expect(PRODUCT_ENVIRONMENT_LABEL).toBe('演示环境')
     expect(PRIMARY_NAV_ITEMS.map((item) => item.description)).toEqual([
       '发起调度',

@@ -13,7 +13,6 @@
           <div class="brand-mark">OR</div>
           <div v-show="!collapsed" class="brand-copy">
             <strong>{{ PRODUCT_NAME }}</strong>
-            <span>{{ PRODUCT_ENVIRONMENT_LABEL }}</span>
           </div>
         </router-link>
 
@@ -134,7 +133,6 @@ import {
 
 import {
   PRIMARY_NAV_ITEMS,
-  PRODUCT_ENVIRONMENT_LABEL,
   PRODUCT_NAME,
   SECONDARY_NAV_ITEMS
 } from './lib/ux'
@@ -280,7 +278,13 @@ onBeforeUnmount(() => {
 }
 
 .brand-copy strong {
-  font-size: 0.95rem;
+  display: block;
+  max-width: 100%;
+  font-size: 0.88rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-copy span {
