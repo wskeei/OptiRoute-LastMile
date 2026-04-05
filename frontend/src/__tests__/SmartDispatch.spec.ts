@@ -38,6 +38,14 @@ vi.mock('element-plus', () => ({
   }
 }))
 
+const currentStation = {
+  id: 3,
+  name: '杭州钱江新城配送站',
+  address: '杭州市上城区钱江新城',
+  latitude: 30.2459,
+  longitude: 120.2108
+}
+
 const ButtonStub = defineComponent({
   props: {
     disabled: Boolean,
@@ -138,6 +146,7 @@ describe('SmartDispatch', () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
       .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: currentStation })
       .mockResolvedValueOnce({ data: [] })
 
     const wrapper = mountComponent()
@@ -154,10 +163,60 @@ describe('SmartDispatch', () => {
     expect(wrapper.text()).not.toContain('下一步怎么做')
   })
 
+  it('loads the current main station instead of hardcoding People Square', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 30.2, longitude: 120.1 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({ data: [] })
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('杭州钱江新城配送站')
+  })
+
+  it('re-centers restored route results on the latest plan depot instead of the current station', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 30.2, longitude: 120.1 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 11,
+            status: 'COMPLETED',
+            created_at: '2026-04-05T08:00:00Z',
+            routes: [
+              {
+                geo_json: {
+                  coordinates: [
+                    [121.4737, 31.2304],
+                    [121.48, 31.24],
+                    [121.4737, 31.2304]
+                  ],
+                  total_distance_km: 12.6,
+                  generation: 80,
+                  packages_ordered: []
+                }
+              }
+            ]
+          }
+        ]
+      })
+
+    mountComponent()
+    await flushPromises()
+
+    const mapInstance = (await import('leaflet')).default.map.mock.results[0]?.value
+    expect(mapInstance?.setView).toHaveBeenCalledWith([31.2304, 121.4737], 12)
+  })
+
   it('keeps the dispatch action disabled when the sample data is not ready', async () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ status: 'ASSIGNED', latitude: 31.2, longitude: 121.4 }] })
       .mockResolvedValueOnce({ data: [{ status: 'OFF_DUTY' }] })
+      .mockResolvedValueOnce({ data: currentStation })
       .mockResolvedValueOnce({ data: [] })
 
     const wrapper = mountComponent()
@@ -172,6 +231,7 @@ describe('SmartDispatch', () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
       .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: currentStation })
       .mockResolvedValueOnce({ data: [] })
     vi.mocked(axios.post).mockResolvedValueOnce({ data: { id: 9 } })
 
@@ -184,10 +244,30 @@ describe('SmartDispatch', () => {
     expect(axios.post).toHaveBeenCalledWith(
       '/api/v1/dispatch/plans',
       expect.objectContaining({
-        station_id: 1
+        station_id: currentStation.id
       })
     )
     expect(vi.mocked(axios.post).mock.calls[0]?.[1]).not.toHaveProperty('algorithm_meta')
+  })
+
+  it('posts a station-aware reset payload when refreshing demo data', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.3, longitude: 121.5 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+    vi.mocked(axios.post).mockResolvedValueOnce({ data: { message: 'ok' } })
+
+    const wrapper = mountComponent()
+    await flushPromises()
+
+    const resetButton = wrapper.findAll('button').find((button) => button.text().includes('重置数据'))
+    await resetButton?.trigger('click')
+    await flushPromises()
+
+    expect(axios.post).toHaveBeenCalledWith('/api/v1/dispatch/reset-demo', { randomize_station: false })
   })
 
   it('keeps polling failures visible in the page body with recovery guidance', async () => {
@@ -196,6 +276,7 @@ describe('SmartDispatch', () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
       .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: currentStation })
       .mockResolvedValueOnce({ data: [] })
       .mockRejectedValueOnce(new Error('poll failed'))
     vi.mocked(axios.post).mockResolvedValueOnce({ data: { id: 9 } })

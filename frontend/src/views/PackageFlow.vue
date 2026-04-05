@@ -100,6 +100,11 @@ const search = ref('')
 const statusFilter = ref('')
 const dialogVisible = ref(false)
 const dialogWidth = ref('480px')
+const currentStation = ref({
+  id: 1,
+  latitude: 31.2304,
+  longitude: 121.4737
+})
 
 const form = reactive({
   tracking_number: '',
@@ -131,10 +136,29 @@ const fetchPackages = async () => {
   }
 }
 
+const loadCurrentStation = async () => {
+  try {
+    const stationRes = await axios.get('/api/v1/delivery/stations/current')
+    currentStation.value = {
+      id: stationRes.data.id,
+      latitude: stationRes.data.latitude,
+      longitude: stationRes.data.longitude
+    }
+    form.latitude = currentStation.value.latitude
+    form.longitude = currentStation.value.longitude
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+const randomizeAroundStation = () => {
+  form.latitude = currentStation.value.latitude + (Math.random() - 0.5) * 0.08
+  form.longitude = currentStation.value.longitude + (Math.random() - 0.5) * 0.08
+}
+
 const handleAdd = async () => {
   try {
-    form.latitude = 31.2304 + (Math.random() - 0.5) * 0.1
-    form.longitude = 121.4737 + (Math.random() - 0.5) * 0.1
+    randomizeAroundStation()
 
     await axios.post('/api/v1/delivery/packages', form)
     ElMessage.success('包裹入库成功')
@@ -173,6 +197,7 @@ onMounted(() => {
   adjustDialogWidth()
   window.addEventListener('resize', adjustDialogWidth)
   fetchPackages()
+  loadCurrentStation()
 })
 
 onBeforeUnmount(() => {

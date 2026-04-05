@@ -49,12 +49,51 @@ const courierStatus = ref<any[]>([])
 const currentStep = ref(0)
 const statusMessage = ref('')
 let courierMarkers: any[] = [] // Non-reactive to prevent Leaflet proxy issues
+let depotMarker: any = null
 type GeoJsonCoord = [number, number]
 
-const stationCoord: L.LatLngTuple = [31.2304, 121.4737]
+const stationCoord = ref<L.LatLngTuple>([31.2304, 121.4737])
+const stationName = ref('配送站')
+const replayDepotCoord = ref<L.LatLngTuple | null>(null)
 const colors = ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea']
 
 const toLatLng = (coord: GeoJsonCoord): L.LatLngTuple => [coord[1], coord[0]]
+
+const loadCurrentStation = async () => {
+  const stationRes = await axios.get('/api/v1/delivery/stations/current')
+  stationCoord.value = [stationRes.data.latitude, stationRes.data.longitude]
+  stationName.value = stationRes.data.name
+}
+
+const extractDepotCoord = (planRoutes: any[]): L.LatLngTuple | null => {
+  for (const route of planRoutes) {
+    const firstCoord = route.geo_json?.coordinates?.[0]
+    if (firstCoord?.length === 2) {
+      return [firstCoord[1], firstCoord[0]]
+    }
+  }
+  return null
+}
+
+const syncDepotMarker = (coord: L.LatLngTuple, label: string) => {
+  if (!map) return
+
+  if (!depotMarker) {
+    const stationIcon = L.divIcon({
+      html: '<div style="background:#667eea;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 4px 10px rgba(0,0,0,0.3);"></div>',
+      iconSize: [24, 24]
+    })
+    depotMarker = L.marker(coord, { icon: stationIcon }).addTo(map).bindPopup(label)
+    return
+  }
+
+  if (typeof depotMarker.setLatLng === 'function') {
+    depotMarker.setLatLng(coord)
+  }
+  if (typeof depotMarker.setPopupContent === 'function') {
+    depotMarker.setPopupContent(label)
+  }
+}
 
 const totalSteps = computed(() => {
   return Math.max(...courierStatus.value.map(c => c.total), 0)
@@ -65,14 +104,15 @@ const canStep = computed(() => {
 })
 
 onMounted(async () => {
-  map = L.map(mapRef.value).setView(stationCoord, 12)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map)
+  try {
+    await loadCurrentStation()
+  } catch (e) {
+    console.error(e)
+  }
 
-  const stationIcon = L.divIcon({
-    html: '<div style="background:#667eea;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 4px 10px rgba(0,0,0,0.3);"></div>',
-    iconSize: [24, 24]
-  })
-  L.marker(stationCoord, { icon: stationIcon }).addTo(map).bindPopup('配送站')
+  map = L.map(mapRef.value).setView(stationCoord.value, 12)
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map)
+  syncDepotMarker(stationCoord.value, stationName.value)
 
   await loadLatestDispatch()
 })
@@ -94,6 +134,11 @@ const loadLatestDispatch = async () => {
 
     statusMessage.value = ''
     routes.value = latestPlan.routes
+    replayDepotCoord.value = extractDepotCoord(latestPlan.routes)
+    if (replayDepotCoord.value) {
+      map.setView(replayDepotCoord.value, 12)
+      syncDepotMarker(replayDepotCoord.value, '历史调度起点')
+    }
     initializeSimulation()
   } catch (e) {
     console.error(e)
@@ -209,13 +254,14 @@ const drawCouriers = () => {
 }
 
 const initializeSimulation = () => {
+  const depotCoord = replayDepotCoord.value ?? stationCoord.value
   courierStatus.value = routes.value.map((route, idx) => ({
     id: route.courier_id || idx,
     name: route.courier?.name || `快递员${idx + 1}`,
     color: route.geo_json?.color || colors[idx % colors.length],
     total: route.geo_json?.package_count || 0,
     delivered: 0,
-    currentPos: [...stationCoord],
+    currentPos: [...depotCoord],
     maxCapacity: route.courier?.max_capacity || 50,
     route: route
   }))
@@ -253,10 +299,11 @@ const nextStep = () => {
 }
 
 const resetSimulation = () => {
+  const depotCoord = replayDepotCoord.value ?? stationCoord.value
   currentStep.value = 0
   courierStatus.value.forEach(courier => {
     courier.delivered = 0
-    courier.currentPos = [...stationCoord]
+    courier.currentPos = [...depotCoord]
   })
   drawCouriers()
 }

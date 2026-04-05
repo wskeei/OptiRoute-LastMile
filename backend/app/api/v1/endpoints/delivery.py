@@ -4,6 +4,8 @@ from typing import List
 from app.db.session import get_db
 from app.models import all_models as models
 from app.schemas import all_schemas as schemas
+from app.services.demo_data_service import build_package_points_around_station
+from app.services.station_service import StationService
 
 router = APIRouter()
 
@@ -20,6 +22,14 @@ def create_station(station: schemas.StationCreate, db: Session = Depends(get_db)
 @router.get("/stations", response_model=List[schemas.Station])
 def read_stations(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return db.query(models.DeliveryStation).offset(skip).limit(limit).all()
+
+@router.get("/stations/current", response_model=schemas.Station)
+def read_current_station(db: Session = Depends(get_db)):
+    return StationService(db).get_or_create_main_station()
+
+@router.patch("/stations/current", response_model=schemas.Station)
+def update_current_station(station: schemas.StationUpdate, db: Session = Depends(get_db)):
+    return StationService(db).update_main_station(**station.model_dump())
 
 # --- Courier API ---
 
@@ -79,45 +89,39 @@ def reinit_package_data(db: Session = Depends(get_db)):
         db.query(models.Package).delete()
         db.commit()
 
-        # 2. Seed new data
         import random
-        from app.utils.seed_shanghai_data import get_shanghai_locations
-        
-        shanghai_locs = get_shanghai_locations() # 100 base locations
-        
-        # Determine how many to generate (user said 300)
+        station = StationService(db).get_or_create_main_station()
         target_count = 300
-        
-        # Since we have only 100 base locations, we sample with replacement or jitter them
-        # Let's simple sample with replacement for now, or loop
-        
+        package_points = build_package_points_around_station(
+            {
+                "name": station.name,
+                "address": station.address,
+                "latitude": station.latitude,
+                "longitude": station.longitude,
+            },
+            count=target_count,
+        )
+
         new_packages = []
-        for i in range(target_count):
-            # Pick a random base location
-            base_loc = random.choice(shanghai_locs)
-            
-            # Add slight jitter to coords to avoid perfect overlap
-            jitter_lat = random.uniform(-0.005, 0.005)
-            jitter_lon = random.uniform(-0.005, 0.005)
-            
+        for i, package_point in enumerate(package_points):
             pkg = models.Package(
                 tracking_number=f"SF{random.randint(10000000, 99999999)}",
-                recipient_name=f"{base_loc['recipient']}-{i+1}", # Unique-ish name
+                recipient_name=package_point["recipient_name"],
                 recipient_phone=f"138{random.randint(10000000, 99999999)}",
-                recipient_address=base_loc['address'],
-                latitude=base_loc['lat'] + jitter_lat,
-                longitude=base_loc['lng'] + jitter_lon,
+                recipient_address=package_point["recipient_address"],
+                latitude=package_point["latitude"],
+                longitude=package_point["longitude"],
                 weight=round(random.uniform(0.5, 5.0), 1),
                 volume=round(random.uniform(0.01, 0.2), 2),
-                status=models.PackageStatus.PENDING
+                status=models.PackageStatus.PENDING,
             )
             new_packages.append(pkg)
-            
+
         db.add_all(new_packages)
         db.commit()
-        
+
         return {"message": f"Successfully re-initialized {target_count} packages"}
-        
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

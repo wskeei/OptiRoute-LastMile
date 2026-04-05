@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from typing import Any
 from app.db.session import get_db
 from app.models import all_models as models
-import random
+from app.services.demo_data_service import build_package_points_around_station
+from app.services.station_service import StationService
 
 router = APIRouter()
 
@@ -22,18 +23,7 @@ def seed_data(db: Session = Depends(get_db)) -> Any:
     - 5 Couriers
     - 100 Random Packages
     """
-    # 1. Check if station exists
-    station = db.query(models.DeliveryStation).first()
-    if not station:
-        station = models.DeliveryStation(
-            name="Shanghai Center Station",
-            address="People's Square, Shanghai",
-            latitude=31.2304,
-            longitude=121.4737
-        )
-        db.add(station)
-        db.commit()
-        db.refresh(station)
+    station = StationService(db).get_or_create_main_station()
 
     # 2. Seed Couriers
     if db.query(models.Courier).count() == 0:
@@ -47,18 +37,23 @@ def seed_data(db: Session = Depends(get_db)) -> Any:
     # 3. Seed Packages (Random locations around station)
     if db.query(models.Package).count() < 10:
         packages = []
-        for i in range(100):
-            # Random lat/lon within ~10km
-            lat_offset = (random.random() - 0.5) * 0.1
-            lon_offset = (random.random() - 0.5) * 0.1
-            
+        package_points = build_package_points_around_station(
+            {
+                "name": station.name,
+                "address": station.address,
+                "latitude": station.latitude,
+                "longitude": station.longitude,
+            },
+            count=100,
+        )
+        for i, package_point in enumerate(package_points):
             pkg = models.Package(
                 tracking_number=f"PKG{i:04d}",
-                recipient_name=f"User {i}",
+                recipient_name=package_point["recipient_name"],
                 recipient_phone="13900000000",
-                recipient_address=f"Address {i}",
-                latitude=station.latitude + lat_offset,
-                longitude=station.longitude + lon_offset,
+                recipient_address=package_point["recipient_address"],
+                latitude=package_point["latitude"],
+                longitude=package_point["longitude"],
                 status=models.PackageStatus.PENDING
             )
             packages.append(pkg)

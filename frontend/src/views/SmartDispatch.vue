@@ -124,14 +124,16 @@ const step = ref(0)
 const batchName = ref('')
 const pendingPackageCount = ref(0)
 const availableCourierCount = ref(0)
-const stationName = ref('人民广场配送站')
+const stationName = ref('')
 const result = ref<DispatchResult | null>(null)
 const inlineStatus = ref<InlineStatus | null>(null)
 const mapRef = ref()
-const stationId = ref(1)
+const stationId = ref<number | null>(null)
+const stationCoords = ref<[number, number]>([31.2304, 121.4737])
 const allPackages = ref<any[]>([])
 
 let map: any = null
+let depotMarker: any = null
 const packageLayerGroup = ref<any>(null)
 const routeLayerGroup = ref<any>(null)
 
@@ -179,6 +181,48 @@ const fetchDispatchContext = async () => {
   availableCourierCount.value = couriersRes.data.filter((item: any) => item.status === 'AVAILABLE').length
 }
 
+const fetchCurrentStation = async () => {
+  const stationRes = await axios.get('/api/v1/delivery/stations/current')
+  stationName.value = stationRes.data.name
+  stationId.value = stationRes.data.id
+  stationCoords.value = [stationRes.data.latitude, stationRes.data.longitude]
+}
+
+const extractDepotFromRoutes = (routes: any[]): [number, number] | null => {
+  for (const route of routes) {
+    const firstCoord = route.geo_json?.coordinates?.[0]
+    if (firstCoord?.length === 2) {
+      return [firstCoord[1], firstCoord[0]]
+    }
+  }
+  return null
+}
+
+const focusOnRouteDepot = (routes: any[]) => {
+  if (!map) return
+  const depotCoord = extractDepotFromRoutes(routes)
+  if (!depotCoord) return
+
+  map.setView(depotCoord, 12)
+
+  const depotIcon = L.divIcon({
+    html: '<div style="background:#c05621;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 12px rgba(16,42,67,0.25);"></div>',
+    iconSize: [18, 18]
+  })
+
+  if (!depotMarker) {
+    depotMarker = L.marker(depotCoord, { icon: depotIcon }).addTo(map).bindPopup('历史调度起点')
+    return
+  }
+
+  if (typeof depotMarker.setLatLng === 'function') {
+    depotMarker.setLatLng(depotCoord)
+  }
+  if (typeof depotMarker.setPopupContent === 'function') {
+    depotMarker.setPopupContent('历史调度起点')
+  }
+}
+
 const drawPackageMarkers = () => {
   if (!map) return
 
@@ -210,17 +254,17 @@ onMounted(async () => {
   batchName.value = `调度计划 ${new Date().toLocaleString('zh-CN')}`
 
   try {
-    await fetchDispatchContext()
+    await Promise.all([fetchDispatchContext(), fetchCurrentStation()])
     inlineStatus.value = null
 
-    map = L.map(mapRef.value).setView([31.2304, 121.4737], 12)
+    map = L.map(mapRef.value).setView(stationCoords.value, 12)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map)
 
     const stationIcon = L.divIcon({
       html: '<div style="background:#184a68;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 12px rgba(16,42,67,0.25);"></div>',
       iconSize: [18, 18]
     })
-    L.marker([31.2304, 121.4737], { icon: stationIcon }).addTo(map).bindPopup(stationName.value)
+    L.marker(stationCoords.value, { icon: stationIcon }).addTo(map).bindPopup(stationName.value)
 
     drawPackageMarkers()
     await restoreLatestPlan()
@@ -246,6 +290,7 @@ const restoreLatestPlan = async () => {
 
   const latestPlan = activePlans[0]
   if (latestPlan.routes && latestPlan.routes.length > 0) {
+    focusOnRouteDepot(latestPlan.routes)
     drawRoutes(latestPlan.routes)
     step.value = latestPlan.status === 'OPTIMIZING' ? 2 : 3
     ElMessage.success('已恢复最近一次调度结果')
@@ -255,6 +300,10 @@ const restoreLatestPlan = async () => {
 const startDispatch = async () => {
   if (!canDispatch.value) {
     ElMessage.warning('请先准备待调度包裹和可用快递员')
+    return
+  }
+  if (!stationId.value) {
+    ElMessage.error('当前主配送站尚未加载完成')
     return
   }
 
@@ -287,6 +336,7 @@ const pollStatus = async (planId: number) => {
       const response = await axios.get(`/api/v1/dispatch/plans/${planId}`)
 
       if (response.data.routes && response.data.routes.length > 0) {
+        focusOnRouteDepot(response.data.routes)
         drawRoutes(response.data.routes)
       }
 
@@ -403,13 +453,14 @@ const resetDemo = async () => {
   resetting.value = true
 
   try {
-    await axios.post('/api/v1/dispatch/reset-demo')
+    await axios.post('/api/v1/dispatch/reset-demo', { randomize_station: false })
     ElMessage.success('演示样本已更新，可以重新发起调度')
     result.value = null
     step.value = 0
     inlineStatus.value = null
 
     await fetchDispatchContext()
+    map.setView(stationCoords.value, 12)
 
     if (routeLayerGroup.value) {
       routeLayerGroup.value.clearLayers()
