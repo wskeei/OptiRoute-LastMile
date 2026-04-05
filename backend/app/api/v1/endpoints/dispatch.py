@@ -6,13 +6,77 @@ from app.db.session import get_db
 from app.schemas import all_schemas as schemas
 from app.models import all_models as models
 from app.services.demo_data_service import (
+    DEFAULT_DEMO_COURIER_COUNT,
+    DEFAULT_DEMO_PACKAGE_COUNT,
     build_package_points_around_station,
+    build_demo_courier_profiles,
     choose_random_station_seed,
 )
 from app.services.dispatch_service import DispatchService, run_dispatch_background
 from app.services.station_service import StationService
 
 router = APIRouter()
+
+
+def _ensure_demo_packages(
+    db: Session,
+    *,
+    station_payload: dict,
+    target_count: int,
+) -> list[models.Package]:
+    import random
+
+    packages = db.query(models.Package).order_by(models.Package.id.asc()).all()
+    missing_count = target_count - len(packages)
+    if missing_count > 0:
+        package_points = build_package_points_around_station(
+            station_payload,
+            count=missing_count,
+        )
+        new_packages = []
+        for i, package_point in enumerate(package_points):
+            new_packages.append(
+                models.Package(
+                    tracking_number=f"DEMO{len(packages) + i + 1:06d}{random.randint(100, 999)}",
+                    recipient_name=package_point["recipient_name"],
+                    recipient_phone=f"138{random.randint(10000000, 99999999)}",
+                    recipient_address=package_point["recipient_address"],
+                    latitude=package_point["latitude"],
+                    longitude=package_point["longitude"],
+                    weight=round(random.uniform(0.5, 5.0), 1),
+                    volume=round(random.uniform(0.01, 0.2), 2),
+                    status=models.PackageStatus.ASSIGNED,
+                )
+            )
+        db.add_all(new_packages)
+        db.commit()
+        packages = db.query(models.Package).order_by(models.Package.id.asc()).all()
+    return packages
+
+
+def _ensure_demo_couriers(
+    db: Session,
+    *,
+    station_id: int,
+    target_count: int,
+) -> list[models.Courier]:
+    couriers = db.query(models.Courier).order_by(models.Courier.id.asc()).all()
+    missing_count = target_count - len(couriers)
+    if missing_count > 0:
+        courier_profiles = build_demo_courier_profiles(station_id, missing_count)
+        new_couriers = [
+            models.Courier(
+                name=profile["name"],
+                phone=profile["phone"],
+                station_id=profile["station_id"],
+                status=models.CourierStatus.OFF_DUTY,
+            )
+            for profile in courier_profiles
+        ]
+        db.add_all(new_couriers)
+        db.commit()
+        couriers = db.query(models.Courier).order_by(models.Courier.id.asc()).all()
+    return couriers
 
 @router.post("/plans", response_model=schemas.Plan)
 def create_dispatch_plan(
@@ -124,42 +188,44 @@ def reset_demo_data(payload: schemas.ResetDemoRequest, db: Session = Depends(get
         "longitude": station.longitude,
     }
 
-    # 1. 将所有包裹设为ASSIGNED状态
-    db.query(models.Package).update({
-        "status": models.PackageStatus.ASSIGNED,
-        "route_id": None
-    })
-    db.commit()
-
-    # 2. 随机抽取100-150个包裹设为PENDING，并随机设置重量
-    all_packages = db.query(models.Package).all()
-    all_package_ids = [pkg.id for pkg in all_packages]
-    package_sample_size = random.randint(100, 150)
-    selected_package_ids = random.sample(all_package_ids, min(package_sample_size, len(all_package_ids)))
-
+    all_packages = _ensure_demo_packages(
+        db,
+        station_payload=station_payload,
+        target_count=DEFAULT_DEMO_PACKAGE_COUNT,
+    )
     package_points = build_package_points_around_station(
         station_payload,
-        count=len(selected_package_ids),
+        count=len(all_packages),
     )
-    
-    # 更新状态、重量和位置信息
-    for i, pkg in enumerate(db.query(models.Package).filter(models.Package.id.in_(selected_package_ids))):
-        pkg.status = models.PackageStatus.PENDING
+    for pkg, package_point in zip(all_packages, package_points):
+        pkg.status = models.PackageStatus.ASSIGNED
+        pkg.route_id = None
         pkg.weight = round(random.uniform(0.5, 8.0), 1)
-
-        package_point = package_points[i]
+        pkg.volume = round(random.uniform(0.01, 0.2), 2)
+        pkg.recipient_name = package_point["recipient_name"]
+        pkg.recipient_phone = f"138{random.randint(10000000, 99999999)}"
+        pkg.recipient_address = package_point["recipient_address"]
         pkg.latitude = package_point["latitude"]
         pkg.longitude = package_point["longitude"]
-        pkg.recipient_address = package_point["recipient_address"]
-        pkg.recipient_name = package_point["recipient_name"]
-
     db.commit()
 
-    # 3. 将所有快递员设为OFF_DUTY状态
-    db.query(models.Courier).update({
-        "status": models.CourierStatus.OFF_DUTY,
-        "station_id": station.id,
-    })
+    all_package_ids = [pkg.id for pkg in all_packages]
+    package_sample_size = min(random.randint(100, 150), len(all_package_ids))
+    selected_package_ids = random.sample(all_package_ids, package_sample_size)
+    for pkg in all_packages:
+        if pkg.id in selected_package_ids:
+            pkg.status = models.PackageStatus.PENDING
+    db.commit()
+
+    all_couriers = _ensure_demo_couriers(
+        db,
+        station_id=station.id,
+        target_count=DEFAULT_DEMO_COURIER_COUNT,
+    )
+    for courier in all_couriers:
+        courier.status = models.CourierStatus.OFF_DUTY
+        courier.station_id = station.id
+        courier.current_load = 0.0
     db.commit()
 
     # Calculate total weight of selected packages
@@ -167,7 +233,6 @@ def reset_demo_data(payload: schemas.ResetDemoRequest, db: Session = Depends(get
     total_package_weight = sum([p.weight for p in selected_packages])
 
     # 4. 随机抽取初始 5-10 个快递员
-    all_couriers = db.query(models.Courier).all()
     all_courier_ids = [c.id for c in all_couriers]
     
     courier_sample_size = random.randint(5, 10)
@@ -227,8 +292,8 @@ def reset_demo_data(payload: schemas.ResetDemoRequest, db: Session = Depends(get
 
     pending_count = db.query(models.Package).filter(models.Package.status == models.PackageStatus.PENDING).count()
     available_couriers = db.query(models.Courier).filter(models.Courier.status == models.CourierStatus.AVAILABLE).count()
-    total_packages = len(all_package_ids)
-    total_couriers = len(all_courier_ids)
+    total_packages = db.query(models.Package).count()
+    total_couriers = db.query(models.Courier).count()
 
     return {
         "message": "Demo data reset successfully",

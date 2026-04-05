@@ -140,10 +140,34 @@ describe('RealtimeMap', () => {
     expect(wrapper.text()).not.toContain('最近一次调度还没有可展示的路线结果')
   })
 
-  it('uses the current main station coordinates for the depot marker and initial map center', async () => {
+  it('uses the latest route depot for the depot marker and replay center when it differs from the current station', async () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: currentStation })
-      .mockResolvedValueOnce({ data: [] })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 10,
+            created_at: '2026-04-04T10:00:00Z',
+            status: 'COMPLETED',
+            routes: [
+              {
+                courier_id: 1,
+                courier: { name: '完成计划快递员', max_capacity: 50 },
+                geo_json: {
+                  color: '#184a68',
+                  package_count: 1,
+                  coordinates: [
+                    [121.4737, 31.2304],
+                    [121.48, 31.24],
+                    [121.4737, 31.2304]
+                  ],
+                  packages_ordered: [{ recipient_name: 'A', tracking_number: 'T1', weight: 1 }]
+                }
+              }
+            ]
+          }
+        ]
+      })
 
     mount(RealtimeMap, {
       global: {
@@ -158,7 +182,8 @@ describe('RealtimeMap', () => {
 
     const mapInstance = vi.mocked(L.map).mock.results[0]?.value
     expect(mapInstance?.setView).toHaveBeenCalledWith([30.6586, 104.0817], 12)
-    expect(vi.mocked(L.marker)).toHaveBeenCalledWith([30.6586, 104.0817], expect.anything())
+    expect(mapInstance?.setView).toHaveBeenCalledWith([31.2304, 121.4737], 12)
+    expect(vi.mocked(L.marker)).toHaveBeenCalledWith([31.2304, 121.4737], expect.anything())
   })
 
   it('keeps no-plan guidance in the page body instead of duplicating it with a toast', async () => {

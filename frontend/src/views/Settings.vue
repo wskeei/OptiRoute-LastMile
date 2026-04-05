@@ -130,15 +130,16 @@ onMounted(() => {
 
 const loadStats = async () => {
   try {
-    const [packagesRes, couriersRes, plansRes] = await Promise.all([
+    const [packagesRes, couriersRes, plansRes, stationsRes] = await Promise.all([
       axios.get('/api/v1/delivery/packages'),
       axios.get('/api/v1/delivery/couriers'),
-      axios.get('/api/v1/dispatch/plans')
+      axios.get('/api/v1/dispatch/plans'),
+      axios.get('/api/v1/delivery/stations')
     ])
     stats.value.totalPackages = packagesRes.data.length
     stats.value.totalCouriers = couriersRes.data.length
     stats.value.totalPlans = plansRes.data.length
-    stats.value.totalStations = 1
+    stats.value.totalStations = stationsRes.data.length
   } catch (error) {
     console.error(error)
   }

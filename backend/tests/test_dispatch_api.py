@@ -126,8 +126,25 @@ def test_reset_demo_data(test_db):
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
-    assert data["pending_packages"] == 10
+    assert 100 <= data["pending_packages"] <= 150
+    assert data["total_packages"] >= 300
+    assert data["total_couriers"] >= 10
     assert "station" in data
+
+
+def test_reset_demo_data_creates_usable_samples_when_only_station_exists(test_db):
+    test_db.query(Package).delete()
+    test_db.query(Courier).delete()
+    test_db.commit()
+
+    response = client.post("/api/v1/dispatch/reset-demo", json={"randomize_station": False})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["pending_packages"] > 0
+    assert data["available_couriers"] > 0
+    assert test_db.query(Package).count() > 0
+    assert test_db.query(Courier).count() > 0
 
 
 def test_reset_demo_data_can_randomize_main_station(test_db):

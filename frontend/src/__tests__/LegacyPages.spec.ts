@@ -219,6 +219,9 @@ describe('legacy page follow-up fixes', () => {
       if (url === '/api/v1/delivery/packages') {
         return { data: [{ id: 1 }, { id: 2 }] }
       }
+      if (url === '/api/v1/delivery/stations') {
+        return { data: [{ id: 1 }, { id: 2 }] }
+      }
       return { data: [{ id: 1 }] }
     })
 
@@ -239,6 +242,45 @@ describe('legacy page follow-up fixes', () => {
     expect(wrapper.text()).not.toContain('运行与演示边界')
     expect(wrapper.text()).not.toContain('展开说明')
     expect(wrapper.text()).not.toContain('聚类数会根据当前可用快递员数量自动确定')
+  })
+
+  it('shows the real station row count from the API in settings stats', async () => {
+    vi.mocked(axios.get).mockImplementation(async (url) => {
+      if (url === '/api/v1/delivery/stations/current') {
+        return {
+          data: {
+            id: 1,
+            name: '上海人民广场配送站',
+            address: '上海市黄浦区人民广场',
+            latitude: 31.2304,
+            longitude: 121.4737
+          }
+        }
+      }
+      if (url === '/api/v1/delivery/packages') {
+        return { data: [{ id: 1 }, { id: 2 }] }
+      }
+      if (url === '/api/v1/delivery/stations') {
+        return { data: [{ id: 1 }, { id: 2 }, { id: 3 }] }
+      }
+      return { data: [{ id: 1 }] }
+    })
+
+    const wrapper = mount(Settings, {
+      global: {
+        stubs: {
+          'el-button': ButtonStub,
+          'el-form': passthroughStub('el-form'),
+          'el-form-item': passthroughStub('el-form-item'),
+          'el-input': InputStub,
+          'el-input-number': InputNumberStub
+        }
+      }
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('配送站点数3')
   })
 
   it('renders a main-station form and saves edits through the current-station endpoint', async () => {

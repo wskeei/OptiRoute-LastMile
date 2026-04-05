@@ -39,6 +39,24 @@ class StationService:
         longitude: float,
     ) -> models.DeliveryStation:
         station = self.get_or_create_main_station()
+        has_historical_plans = (
+            self.db.query(models.DeliveryPlan)
+            .filter(models.DeliveryPlan.station_id == station.id)
+            .first()
+        )
+        if has_historical_plans:
+            archived_station = models.DeliveryStation(
+                name=station.name,
+                address=station.address,
+                latitude=station.latitude,
+                longitude=station.longitude,
+            )
+            self.db.add(archived_station)
+            self.db.flush()
+            self.db.query(models.DeliveryPlan).filter(
+                models.DeliveryPlan.station_id == station.id
+            ).update({"station_id": archived_station.id}, synchronize_session=False)
+
         station.name = name
         station.address = address
         station.latitude = latitude

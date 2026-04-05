@@ -6,6 +6,8 @@ from app.utils.china_station_catalog import CHINA_MAIN_STATION_SEEDS
 
 DISTRICT_NAMES = ["核心区", "商圈片区", "居住片区", "园区片区", "滨江片区", "大学城片区"]
 ROAD_NAMES = ["中山路", "解放路", "人民路", "建设路", "创新大道", "幸福街"]
+DEFAULT_DEMO_PACKAGE_COUNT = 300
+DEFAULT_DEMO_COURIER_COUNT = 10
 
 
 def choose_random_station_seed(seed: int | None = None) -> dict:
@@ -78,3 +80,14 @@ def build_package_points_around_station(
         )
 
     return packages
+
+
+def build_demo_courier_profiles(station_id: int, count: int) -> list[dict]:
+    return [
+        {
+            "name": f"演示快递员{i + 1}",
+            "phone": f"139{(i + 1):08d}",
+            "station_id": station_id,
+        }
+        for i in range(count)
+    ]

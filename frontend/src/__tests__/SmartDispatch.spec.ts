@@ -176,6 +176,42 @@ describe('SmartDispatch', () => {
     expect(wrapper.text()).toContain('杭州钱江新城配送站')
   })
 
+  it('re-centers restored route results on the latest plan depot instead of the current station', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 30.2, longitude: 120.1 }] })
+      .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 11,
+            status: 'COMPLETED',
+            created_at: '2026-04-05T08:00:00Z',
+            routes: [
+              {
+                geo_json: {
+                  coordinates: [
+                    [121.4737, 31.2304],
+                    [121.48, 31.24],
+                    [121.4737, 31.2304]
+                  ],
+                  total_distance_km: 12.6,
+                  generation: 80,
+                  packages_ordered: []
+                }
+              }
+            ]
+          }
+        ]
+      })
+
+    mountComponent()
+    await flushPromises()
+
+    const mapInstance = (await import('leaflet')).default.map.mock.results[0]?.value
+    expect(mapInstance?.setView).toHaveBeenCalledWith([31.2304, 121.4737], 12)
+  })
+
   it('keeps the dispatch action disabled when the sample data is not ready', async () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ status: 'ASSIGNED', latitude: 31.2, longitude: 121.4 }] })
