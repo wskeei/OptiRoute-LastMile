@@ -22,7 +22,8 @@ The backend is built with **FastAPI** and the frontend with **Vue 3**, focusing 
 - **Smart Dispatch Center**: trigger a dispatch run, inspect optimization progress, and view generated routes on a map.
 - **Realtime Map**: replay the latest dispatch result with route overlays and courier status cards.
 - **Analytics and History**: review completed plans, compare route metrics, and inspect courier workload trends.
-- **System actions**: reset demo data, clear dispatch history, and inspect package or courier records from the UI.
+- **Single editable main station**: settings, dispatch, realtime monitoring, package creation, courier creation, and demo-data generation all read the same current depot.
+- **System actions**: reset demo data around the current depot, randomly switch to another supported Chinese city before regenerating samples, clear dispatch history, and inspect package or courier records from the UI.
 
 ## Current Algorithm Behavior
 
@@ -33,7 +34,7 @@ The current backend implementation uses fixed runtime settings inside the dispat
 - GA with `population_size = 50`
 - GA with `generations = 100`
 
-The frontend currently shows configurable sliders for `k`, generations, and population size, but those values are not applied by the backend dispatch pipeline yet. The settings page stores defaults in browser `localStorage`; it does not persist algorithm parameters to the server.
+The dispatch pipeline still uses straight-line Haversine distance inside the existing constrained K-Means + GA flow. The settings page now manages the single main delivery station and station-aware demo reset actions; it does not expose multi-station selection or reintroduce road-network routing.
 
 ## Technology Stack
 
@@ -124,8 +125,9 @@ BACKEND_HOST=0.0.0.0 BACKEND_PORT=8000 FRONTEND_HOST=0.0.0.0 FRONTEND_PORT=5173 
    npm run dev
    ```
 3. Open `http://localhost:5173`, log in or register, then:
+   - optionally open `设置` and edit the main delivery station
    - go to `AI调度中心`
-   - click `重置演示数据`
+   - click `重置数据`, or use `设置` to reset around the current station / randomize to another supported Chinese city
    - click `开始AI调度`
    - watch routes appear while the backend updates plan progress
 
