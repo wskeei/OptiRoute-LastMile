@@ -9,15 +9,11 @@
 
       <div class="hero-actions">
         <el-button type="warning" size="large" :loading="resetting" :disabled="loading" @click="resetDemo">
-          重置演示数据
+          重置数据
         </el-button>
         <el-button type="primary" size="large" :loading="loading" :disabled="!canDispatch" @click="startDispatch">
           开始调度
         </el-button>
-        <div class="hero-note">
-          <span class="hero-chip">{{ PRODUCT_ENVIRONMENT_LABEL }}</span>
-          <p>{{ PRODUCT_ENVIRONMENT_NOTE }}</p>
-        </div>
       </div>
     </section>
 
@@ -104,7 +100,7 @@
 
     <section v-if="!canDispatch" class="section-card helper-card">
       <h2>先准备样本</h2>
-      <p>需要待调度包裹和可用快递员后才能开始。最简单的做法是点击“重置演示数据”。</p>
+      <p>需要待调度包裹和可用快递员后才能开始。最简单的做法是点击“重置数据”。</p>
     </section>
   </div>
 </template>
@@ -116,7 +112,7 @@ import L from 'leaflet'
 import 'leaflet-ant-path'
 import { ElMessage } from 'element-plus'
 
-import { DISPATCH_TRUTH_NOTES, PRODUCT_ENVIRONMENT_LABEL, PRODUCT_ENVIRONMENT_NOTE } from '../lib/ux'
+import { DISPATCH_TRUTH_NOTES } from '../lib/ux'
 import { sortPlansByNewest } from '../lib/analytics'
 
 interface DispatchResult {
@@ -292,7 +288,7 @@ const pollStatus = async (planId: number) => {
       clearInterval(interval)
       loading.value = false
       console.error(error)
-      setInlineStatus('调度状态获取失败', '可以重新发起调度，或先点击“重置演示数据”刷新样本。', 'retry-dispatch')
+      setInlineStatus('调度状态获取失败', '可以重新发起调度，或先点击“重置数据”刷新样本。', 'retry-dispatch')
     }
   }, 1000)
 }
@@ -408,7 +404,7 @@ const resetDemo = async () => {
   } catch (error: any) {
     console.error(error)
     ElMessage.error(error.response?.data?.detail || `重置失败: ${error.message || '未知错误'}`)
-    setInlineStatus('重置演示数据失败', '请稍后重试；如果问题持续存在，请刷新页面后再操作。')
+    setInlineStatus('重置数据失败', '请稍后重试；如果问题持续存在，请刷新页面后再操作。')
   } finally {
     resetting.value = false
   }
@@ -481,35 +477,6 @@ const resetDemo = async () => {
   margin: 0;
   color: #52606d;
   line-height: 1.5;
-}
-
-.hero-note {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.65rem;
-  align-items: center;
-  max-width: 22rem;
-}
-
-.hero-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.8rem;
-  padding: 0 0.75rem;
-  border-radius: 999px;
-  background: rgba(24, 74, 104, 0.12);
-  color: #184a68;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.hero-note p {
-  margin: 0;
-  color: #52606d;
-  font-size: 0.9rem;
-  line-height: 1.4;
-  text-align: right;
 }
 
 .map-panel {

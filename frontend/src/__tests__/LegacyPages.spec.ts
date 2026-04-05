@@ -86,7 +86,7 @@ describe('legacy page follow-up fixes', () => {
     expect(wrapper.get('.el-dialog').attributes('data-width')).toBe('90vw')
   })
 
-  it('keeps settings explanations collapsed until the user asks for details', async () => {
+  it('removes the settings explanation section entirely', async () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ id: 1 }, { id: 2 }] })
       .mockResolvedValueOnce({ data: [{ id: 1 }] })
@@ -102,8 +102,8 @@ describe('legacy page follow-up fixes', () => {
 
     await flushPromises()
 
-    expect(wrapper.text()).toContain('展开说明')
+    expect(wrapper.text()).not.toContain('运行与演示边界')
+    expect(wrapper.text()).not.toContain('展开说明')
     expect(wrapper.text()).not.toContain('聚类数会根据当前可用快递员数量自动确定')
-    expect(wrapper.text()).not.toContain('当前系统展示的是演示流程，不是生产调度后台')
   })
 })

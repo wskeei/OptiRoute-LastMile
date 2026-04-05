@@ -83,7 +83,7 @@ describe('RouteHistory', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('还没有已完成的调度记录')
-    expect(wrapper.text()).toContain('先前往调度中心重置演示数据并发起一次调度')
+    expect(wrapper.text()).toContain('先前往调度中心重置数据并发起一次调度')
     expect(wrapper.find('a[href="/dispatch"]').exists()).toBe(true)
   })
 

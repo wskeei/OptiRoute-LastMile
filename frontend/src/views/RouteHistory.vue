@@ -15,7 +15,7 @@
 
     <section v-if="!loading && !loadError && plans.length === 0" class="section-card empty-history">
       <h3>还没有已完成的调度记录</h3>
-      <p>先前往调度中心重置演示数据并发起一次调度，完成后这里会出现可复盘的路线记录。</p>
+      <p>先前往调度中心重置数据并发起一次调度，完成后这里会出现可复盘的路线记录。</p>
       <router-link class="empty-link" :to="ONBOARDING_STEPS[0]?.path || '/dispatch'">
         {{ ONBOARDING_STEPS[0]?.actionLabel || '前往调度中心' }}
       </router-link>

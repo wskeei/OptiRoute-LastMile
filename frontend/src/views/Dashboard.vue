@@ -5,10 +5,6 @@
         <span class="eyebrow">任务概览</span>
         <h1>先发起调度，再看结果。</h1>
         <p class="page-summary">这里主要帮你确认当前样本和下一步入口。</p>
-        <div class="hero-meta">
-          <span class="hero-chip">{{ PRODUCT_ENVIRONMENT_LABEL }}</span>
-          <span class="hero-note">{{ PRODUCT_ENVIRONMENT_NOTE }}</span>
-        </div>
       </div>
       <router-link class="primary-link" to="/dispatch">进入调度中心</router-link>
     </section>
@@ -69,7 +65,7 @@
 
     <section v-if="!loadError && stats.totalPlans === 0" class="section-card empty-panel">
       <h2>还没有可复盘的调度结果</h2>
-      <p>先去调度中心重置演示数据并发起一次调度，监控和排行图表才会出现。</p>
+      <p>先去调度中心重置数据并发起一次调度，监控和排行图表才会出现。</p>
       <router-link class="primary-link" to="/dispatch">前往调度中心</router-link>
     </section>
 
@@ -103,7 +99,7 @@ import axios from 'axios'
 import * as echarts from 'echarts'
 
 import { getCompletedPlans, getRecentCompletedPlans } from '../lib/analytics'
-import { ONBOARDING_STEPS, PRODUCT_ENVIRONMENT_LABEL, PRODUCT_ENVIRONMENT_NOTE } from '../lib/ux'
+import { ONBOARDING_STEPS } from '../lib/ux'
 
 const stats = ref({
   totalPackages: 0,
@@ -246,32 +242,6 @@ onMounted(async () => {
   max-width: 42rem;
   color: #52606d;
   line-height: 1.6;
-}
-
-.hero-meta {
-  margin-top: 0.85rem;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  align-items: center;
-}
-
-.hero-chip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 1.8rem;
-  padding: 0 0.75rem;
-  border-radius: 999px;
-  background: rgba(24, 74, 104, 0.12);
-  color: #184a68;
-  font-size: 0.82rem;
-  font-weight: 600;
-}
-
-.hero-note {
-  color: #52606d;
-  font-size: 0.92rem;
-  line-height: 1.4;
 }
 
 .primary-link,

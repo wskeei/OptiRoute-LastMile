@@ -123,7 +123,8 @@ describe('page-level persistent feedback', () => {
     const wrapper = mountWithStubs(Dashboard)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('演示数据与估算结果会单独标注')
+    expect(wrapper.text()).not.toContain('演示环境')
+    expect(wrapper.text()).not.toContain('演示数据与估算结果会单独标注')
     expect(wrapper.text()).not.toContain('当前是演示环境')
     expect(wrapper.text()).not.toContain('关键入口')
   })

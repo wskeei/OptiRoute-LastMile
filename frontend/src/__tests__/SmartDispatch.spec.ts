@@ -134,7 +134,7 @@ describe('SmartDispatch', () => {
     vi.useRealTimers()
   })
 
-  it('keeps demo notes available without competing with the main actions', async () => {
+  it('keeps the dispatch hero focused on the primary actions', async () => {
     vi.mocked(axios.get)
       .mockResolvedValueOnce({ data: [{ status: 'PENDING', latitude: 31.2, longitude: 121.4 }] })
       .mockResolvedValueOnce({ data: [{ status: 'AVAILABLE' }] })
@@ -143,8 +143,8 @@ describe('SmartDispatch', () => {
     const wrapper = mountComponent()
     await flushPromises()
 
-    expect(wrapper.text()).toContain('演示环境')
-    expect(wrapper.text()).toContain('演示数据与估算结果会单独标注')
+    expect(wrapper.text()).not.toContain('演示环境')
+    expect(wrapper.text()).not.toContain('演示数据与估算结果会单独标注')
     expect(wrapper.text()).toContain('查看执行说明')
     expect(wrapper.text()).toContain('聚类数会根据当前可用快递员数量自动确定')
     expect(wrapper.text()).toContain('遗传算法迭代次数和种群规模使用后端固定配置')
@@ -209,6 +209,6 @@ describe('SmartDispatch', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('调度状态获取失败')
-    expect(wrapper.text()).toContain('可以重新发起调度，或先点击“重置演示数据”刷新样本')
+    expect(wrapper.text()).toContain('可以重新发起调度，或先点击“重置数据”刷新样本')
   })
 })

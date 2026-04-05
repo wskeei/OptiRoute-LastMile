@@ -3,8 +3,8 @@
     <section class="section-card header">
       <div class="header-text">
         <span class="eyebrow">包裹数据</span>
-        <h1>查看和补充演示包裹。</h1>
-        <p class="header-note">演示样本仅用于流程演练。</p>
+        <h1>查看和补充包裹数据。</h1>
+        <p class="header-note">支持查看当前包裹并补充新记录。</p>
       </div>
       <div class="actions">
         <div class="action-field">
@@ -21,7 +21,7 @@
           </el-select>
         </div>
         <div class="action-field action-button">
-          <el-button type="primary" @click="dialogVisible = true">录入示例包裹</el-button>
+          <el-button type="primary" @click="dialogVisible = true">录入包裹</el-button>
         </div>
       </div>
     </section>
@@ -29,7 +29,7 @@
     <section class="section-card table-card">
       <header class="table-head">
         <h2>包裹列表</h2>
-        <p class="table-note">当前显示演示录入和后端记录。</p>
+        <p class="table-note">当前显示手动录入和后端记录。</p>
       </header>
 
       <el-table :data="filteredPackages">
@@ -46,7 +46,7 @@
 
     <el-dialog
       v-model="dialogVisible"
-      title="演示包裹录入"
+      title="包裹录入"
       class="package-dialog"
       :width="dialogWidth"
       destroy-on-close
@@ -80,7 +80,7 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <span class="dialog-hint">提交后会自动补齐演示坐标。</span>
+          <span class="dialog-hint">提交后会自动补齐坐标。</span>
           <el-button @click="dialogVisible = false">取消</el-button>
           <el-button type="primary" @click="handleAdd">入库</el-button>
         </span>

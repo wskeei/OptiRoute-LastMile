@@ -82,7 +82,7 @@ export const SECONDARY_NAV_ITEMS = NAV_ITEMS.filter((item) =>
 
 export const ONBOARDING_STEPS: OnboardingStep[] = [
   {
-    title: '1. 重置演示数据',
+    title: '1. 重置数据',
     description: '生成待调度样本。',
     actionLabel: '前往调度中心',
     path: '/dispatch'
@@ -104,11 +104,5 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
 export const DISPATCH_TRUTH_NOTES = [
   '聚类数会根据当前可用快递员数量自动确定，前端不会直接控制 K 值。',
   '遗传算法迭代次数和种群规模使用后端固定配置，当前界面不提供真实调参入口。',
-  '地图路线、路线总距离和配送状态来自后端实际返回；演示数据由“重置演示数据”接口随机生成。'
-]
-
-export const SETTINGS_TRUTH_NOTES = [
-  '当前系统展示的是演示流程，不是生产调度后台。',
-  '如果需要展示真实可调参数，应先让后端显式接收并执行这些参数。',
-  '分析页中的“节省率/成本”属于演示估算，页面会明确标注来源。'
+  '地图路线、路线总距离和配送状态来自后端实际返回；演示数据由“重置数据”操作随机生成。'
 ]
