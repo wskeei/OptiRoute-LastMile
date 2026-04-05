@@ -17,6 +17,9 @@ class StationBase(BaseModel):
 class StationCreate(StationBase):
     pass
 
+class StationUpdate(StationBase):
+    pass
+
 class Station(StationBase, BaseSchema):
     id: int
 

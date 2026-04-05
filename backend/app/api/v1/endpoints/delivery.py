@@ -4,6 +4,7 @@ from typing import List
 from app.db.session import get_db
 from app.models import all_models as models
 from app.schemas import all_schemas as schemas
+from app.services.station_service import StationService
 
 router = APIRouter()
 
@@ -20,6 +21,14 @@ def create_station(station: schemas.StationCreate, db: Session = Depends(get_db)
 @router.get("/stations", response_model=List[schemas.Station])
 def read_stations(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return db.query(models.DeliveryStation).offset(skip).limit(limit).all()
+
+@router.get("/stations/current", response_model=schemas.Station)
+def read_current_station(db: Session = Depends(get_db)):
+    return StationService(db).get_or_create_main_station()
+
+@router.patch("/stations/current", response_model=schemas.Station)
+def update_current_station(station: schemas.StationUpdate, db: Session = Depends(get_db)):
+    return StationService(db).update_main_station(**station.model_dump())
 
 # --- Courier API ---
 
