@@ -51,10 +51,17 @@ const statusMessage = ref('')
 let courierMarkers: any[] = [] // Non-reactive to prevent Leaflet proxy issues
 type GeoJsonCoord = [number, number]
 
-const stationCoord: L.LatLngTuple = [31.2304, 121.4737]
+const stationCoord = ref<L.LatLngTuple>([31.2304, 121.4737])
+const stationName = ref('配送站')
 const colors = ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea']
 
 const toLatLng = (coord: GeoJsonCoord): L.LatLngTuple => [coord[1], coord[0]]
+
+const loadCurrentStation = async () => {
+  const stationRes = await axios.get('/api/v1/delivery/stations/current')
+  stationCoord.value = [stationRes.data.latitude, stationRes.data.longitude]
+  stationName.value = stationRes.data.name
+}
 
 const totalSteps = computed(() => {
   return Math.max(...courierStatus.value.map(c => c.total), 0)
@@ -65,14 +72,20 @@ const canStep = computed(() => {
 })
 
 onMounted(async () => {
-  map = L.map(mapRef.value).setView(stationCoord, 12)
+  try {
+    await loadCurrentStation()
+  } catch (e) {
+    console.error(e)
+  }
+
+  map = L.map(mapRef.value).setView(stationCoord.value, 12)
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map)
 
   const stationIcon = L.divIcon({
     html: '<div style="background:#667eea;width:24px;height:24px;border-radius:50%;border:3px solid white;box-shadow:0 4px 10px rgba(0,0,0,0.3);"></div>',
     iconSize: [24, 24]
   })
-  L.marker(stationCoord, { icon: stationIcon }).addTo(map).bindPopup('配送站')
+  L.marker(stationCoord.value, { icon: stationIcon }).addTo(map).bindPopup(stationName.value)
 
   await loadLatestDispatch()
 })
@@ -215,7 +228,7 @@ const initializeSimulation = () => {
     color: route.geo_json?.color || colors[idx % colors.length],
     total: route.geo_json?.package_count || 0,
     delivered: 0,
-    currentPos: [...stationCoord],
+    currentPos: [...stationCoord.value],
     maxCapacity: route.courier?.max_capacity || 50,
     route: route
   }))
@@ -256,7 +269,7 @@ const resetSimulation = () => {
   currentStep.value = 0
   courierStatus.value.forEach(courier => {
     courier.delivered = 0
-    courier.currentPos = [...stationCoord]
+    courier.currentPos = [...stationCoord.value]
   })
   drawCouriers()
 }

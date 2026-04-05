@@ -124,11 +124,12 @@ const step = ref(0)
 const batchName = ref('')
 const pendingPackageCount = ref(0)
 const availableCourierCount = ref(0)
-const stationName = ref('人民广场配送站')
+const stationName = ref('')
 const result = ref<DispatchResult | null>(null)
 const inlineStatus = ref<InlineStatus | null>(null)
 const mapRef = ref()
-const stationId = ref(1)
+const stationId = ref<number | null>(null)
+const stationCoords = ref<[number, number]>([31.2304, 121.4737])
 const allPackages = ref<any[]>([])
 
 let map: any = null
@@ -179,6 +180,13 @@ const fetchDispatchContext = async () => {
   availableCourierCount.value = couriersRes.data.filter((item: any) => item.status === 'AVAILABLE').length
 }
 
+const fetchCurrentStation = async () => {
+  const stationRes = await axios.get('/api/v1/delivery/stations/current')
+  stationName.value = stationRes.data.name
+  stationId.value = stationRes.data.id
+  stationCoords.value = [stationRes.data.latitude, stationRes.data.longitude]
+}
+
 const drawPackageMarkers = () => {
   if (!map) return
 
@@ -210,17 +218,17 @@ onMounted(async () => {
   batchName.value = `调度计划 ${new Date().toLocaleString('zh-CN')}`
 
   try {
-    await fetchDispatchContext()
+    await Promise.all([fetchDispatchContext(), fetchCurrentStation()])
     inlineStatus.value = null
 
-    map = L.map(mapRef.value).setView([31.2304, 121.4737], 12)
+    map = L.map(mapRef.value).setView(stationCoords.value, 12)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png').addTo(map)
 
     const stationIcon = L.divIcon({
       html: '<div style="background:#184a68;width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 2px 12px rgba(16,42,67,0.25);"></div>',
       iconSize: [18, 18]
     })
-    L.marker([31.2304, 121.4737], { icon: stationIcon }).addTo(map).bindPopup(stationName.value)
+    L.marker(stationCoords.value, { icon: stationIcon }).addTo(map).bindPopup(stationName.value)
 
     drawPackageMarkers()
     await restoreLatestPlan()
@@ -255,6 +263,10 @@ const restoreLatestPlan = async () => {
 const startDispatch = async () => {
   if (!canDispatch.value) {
     ElMessage.warning('请先准备待调度包裹和可用快递员')
+    return
+  }
+  if (!stationId.value) {
+    ElMessage.error('当前主配送站尚未加载完成')
     return
   }
 
@@ -403,7 +415,7 @@ const resetDemo = async () => {
   resetting.value = true
 
   try {
-    await axios.post('/api/v1/dispatch/reset-demo')
+    await axios.post('/api/v1/dispatch/reset-demo', { randomize_station: false })
     ElMessage.success('演示样本已更新，可以重新发起调度')
     result.value = null
     step.value = 0

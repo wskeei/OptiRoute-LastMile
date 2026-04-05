@@ -41,6 +41,14 @@ vi.mock('element-plus', () => ({
   }
 }))
 
+const currentStation = {
+  id: 6,
+  name: '成都春熙路配送站',
+  address: '成都市锦江区春熙路',
+  latitude: 30.6586,
+  longitude: 104.0817
+}
+
 const ButtonStub = defineComponent({
   emits: ['click'],
   setup(_, { emit, slots }) {
@@ -67,52 +75,54 @@ describe('RealtimeMap', () => {
   })
 
   it('uses the newest completed result even when a READY plan also exists', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({
-      data: [
-        {
-          id: 10,
-          created_at: '2026-04-04T10:00:00Z',
-          status: 'COMPLETED',
-          routes: [
-            {
-              courier_id: 1,
-              courier: { name: '完成计划快递员', max_capacity: 50 },
-              geo_json: {
-                color: '#184a68',
-                package_count: 1,
-                coordinates: [
-                  [121.4737, 31.2304],
-                  [121.48, 31.24],
-                  [121.4737, 31.2304]
-                ],
-                packages_ordered: [{ recipient_name: 'A', tracking_number: 'T1', weight: 1 }]
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 10,
+            created_at: '2026-04-04T10:00:00Z',
+            status: 'COMPLETED',
+            routes: [
+              {
+                courier_id: 1,
+                courier: { name: '完成计划快递员', max_capacity: 50 },
+                geo_json: {
+                  color: '#184a68',
+                  package_count: 1,
+                  coordinates: [
+                    [121.4737, 31.2304],
+                    [121.48, 31.24],
+                    [121.4737, 31.2304]
+                  ],
+                  packages_ordered: [{ recipient_name: 'A', tracking_number: 'T1', weight: 1 }]
+                }
               }
-            }
-          ]
-        },
-        {
-          id: 9,
-          created_at: '2026-04-03T10:00:00Z',
-          status: 'READY',
-          routes: [
-            {
-              courier_id: 2,
-              courier: { name: '旧READY快递员', max_capacity: 50 },
-              geo_json: {
-                color: '#4c956c',
-                package_count: 1,
-                coordinates: [
-                  [121.4737, 31.2304],
-                  [121.49, 31.25],
-                  [121.4737, 31.2304]
-                ],
-                packages_ordered: [{ recipient_name: 'B', tracking_number: 'T2', weight: 1 }]
+            ]
+          },
+          {
+            id: 9,
+            created_at: '2026-04-03T10:00:00Z',
+            status: 'READY',
+            routes: [
+              {
+                courier_id: 2,
+                courier: { name: '旧READY快递员', max_capacity: 50 },
+                geo_json: {
+                  color: '#4c956c',
+                  package_count: 1,
+                  coordinates: [
+                    [121.4737, 31.2304],
+                    [121.49, 31.25],
+                    [121.4737, 31.2304]
+                  ],
+                  packages_ordered: [{ recipient_name: 'B', tracking_number: 'T2', weight: 1 }]
+                }
               }
-            }
-          ]
-        }
-      ]
-    })
+            ]
+          }
+        ]
+      })
 
     const wrapper = mount(RealtimeMap, {
       global: {
@@ -130,8 +140,31 @@ describe('RealtimeMap', () => {
     expect(wrapper.text()).not.toContain('最近一次调度还没有可展示的路线结果')
   })
 
+  it('uses the current main station coordinates for the depot marker and initial map center', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({ data: [] })
+
+    mount(RealtimeMap, {
+      global: {
+        stubs: {
+          'el-alert': AlertStub,
+          'el-button': ButtonStub
+        }
+      }
+    })
+
+    await flushPromises()
+
+    const mapInstance = vi.mocked(L.map).mock.results[0]?.value
+    expect(mapInstance?.setView).toHaveBeenCalledWith([30.6586, 104.0817], 12)
+    expect(vi.mocked(L.marker)).toHaveBeenCalledWith([30.6586, 104.0817], expect.anything())
+  })
+
   it('keeps no-plan guidance in the page body instead of duplicating it with a toast', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({ data: [] })
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({ data: [] })
 
     const wrapper = mount(RealtimeMap, {
       global: {
@@ -150,31 +183,33 @@ describe('RealtimeMap', () => {
   })
 
   it('creates courier markers with explicit icon geometry for leaflet positioning', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({
-      data: [
-        {
-          id: 10,
-          created_at: '2026-04-04T10:00:00Z',
-          status: 'COMPLETED',
-          routes: [
-            {
-              courier_id: 1,
-              courier: { name: '完成计划快递员', max_capacity: 50 },
-              geo_json: {
-                color: '#184a68',
-                package_count: 1,
-                coordinates: [
-                  [121.4737, 31.2304],
-                  [121.48, 31.24],
-                  [121.4737, 31.2304]
-                ],
-                packages_ordered: [{ recipient_name: 'A', tracking_number: 'T1', weight: 1 }]
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 10,
+            created_at: '2026-04-04T10:00:00Z',
+            status: 'COMPLETED',
+            routes: [
+              {
+                courier_id: 1,
+                courier: { name: '完成计划快递员', max_capacity: 50 },
+                geo_json: {
+                  color: '#184a68',
+                  package_count: 1,
+                  coordinates: [
+                    [121.4737, 31.2304],
+                    [121.48, 31.24],
+                    [121.4737, 31.2304]
+                  ],
+                  packages_ordered: [{ recipient_name: 'A', tracking_number: 'T1', weight: 1 }]
+                }
               }
-            }
-          ]
-        }
-      ]
-    })
+            ]
+          }
+        ]
+      })
 
     mount(RealtimeMap, {
       global: {
@@ -201,35 +236,37 @@ describe('RealtimeMap', () => {
   })
 
   it('creates numbered package markers with centered icon geometry', async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({
-      data: [
-        {
-          id: 10,
-          created_at: '2026-04-04T10:00:00Z',
-          status: 'COMPLETED',
-          routes: [
-            {
-              courier_id: 1,
-              courier: { name: '完成计划快递员', max_capacity: 50 },
-              geo_json: {
-                color: '#184a68',
-                package_count: 2,
-                coordinates: [
-                  [121.4737, 31.2304],
-                  [121.48, 31.24],
-                  [121.49, 31.25],
-                  [121.4737, 31.2304]
-                ],
-                packages_ordered: [
-                  { recipient_name: 'A', tracking_number: 'T1', weight: 1 },
-                  { recipient_name: 'B', tracking_number: 'T2', weight: 1 }
-                ]
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({ data: currentStation })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 10,
+            created_at: '2026-04-04T10:00:00Z',
+            status: 'COMPLETED',
+            routes: [
+              {
+                courier_id: 1,
+                courier: { name: '完成计划快递员', max_capacity: 50 },
+                geo_json: {
+                  color: '#184a68',
+                  package_count: 2,
+                  coordinates: [
+                    [121.4737, 31.2304],
+                    [121.48, 31.24],
+                    [121.49, 31.25],
+                    [121.4737, 31.2304]
+                  ],
+                  packages_ordered: [
+                    { recipient_name: 'A', tracking_number: 'T1', weight: 1 },
+                    { recipient_name: 'B', tracking_number: 'T2', weight: 1 }
+                  ]
+                }
               }
-            }
-          ]
-        }
-      ]
-    })
+            ]
+          }
+        ]
+      })
 
     mount(RealtimeMap, {
       global: {
