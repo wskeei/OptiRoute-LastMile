@@ -134,6 +134,26 @@ const DialogStub = defineComponent({
   }
 })
 
+const DrawerStub = defineComponent({
+  props: {
+    modelValue: {
+      type: Boolean,
+      default: false
+    },
+    title: {
+      type: String,
+      default: ''
+    }
+  },
+  emits: ['update:modelValue'],
+  setup(props, { slots }) {
+    return () =>
+      props.modelValue
+        ? h('aside', { class: 'el-drawer', 'data-title': props.title }, slots.default?.())
+        : null
+  }
+})
+
 const TableStub = defineComponent({
   setup(_, { slots }) {
     return () => h('div', { class: 'el-table' }, slots.default?.())
@@ -169,6 +189,68 @@ describe('legacy page follow-up fixes', () => {
     vi.clearAllMocks()
   })
 
+  it('shows richer courier summary data and opens a detail drawer for the selected courier', async () => {
+    vi.mocked(axios.get).mockImplementation(async (url) => {
+      if (url === '/api/v1/delivery/stations/current') {
+        return {
+          data: {
+            id: 1,
+            name: '上海人民广场配送站'
+          }
+        }
+      }
+      if (url === '/api/v1/delivery/couriers') {
+        return {
+          data: [
+            {
+              id: 11,
+              name: '李雷',
+              phone: '13800000001',
+              status: 'AVAILABLE',
+              max_capacity: 68,
+              station_id: 1
+            }
+          ]
+        }
+      }
+      return { data: [] }
+    })
+
+    const wrapper = mount(CourierWork, {
+      global: {
+        stubs: {
+          'el-avatar': passthroughStub('el-avatar'),
+          'el-button': ButtonStub,
+          'el-dialog': DialogStub,
+          'el-drawer': DrawerStub,
+          'el-form': passthroughStub('el-form'),
+          'el-form-item': passthroughStub('el-form-item'),
+          'el-input': InputStub,
+          'el-input-number': InputNumberStub,
+          'el-tag': passthroughStub('el-tag')
+        }
+      }
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('最大载重')
+    expect(wrapper.text()).toContain('68 kg')
+    expect(wrapper.text()).toContain('所属站点')
+    expect(wrapper.text()).toContain('上海人民广场配送站')
+    expect(wrapper.text()).toContain('点击查看详情')
+    expect(wrapper.find('.el-drawer').exists()).toBe(false)
+
+    await wrapper.get('.courier-card').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('.el-drawer').attributes('data-title')).toBe('快递员详情')
+    expect(wrapper.text()).toContain('基础信息')
+    expect(wrapper.text()).toContain('运力信息')
+    expect(wrapper.text()).toContain('李雷')
+    expect(wrapper.text()).toContain('13800000001')
+  })
+
   it('uses a mobile-safe dialog width for adding couriers', async () => {
     Object.defineProperty(window, 'innerWidth', {
       configurable: true,
@@ -189,6 +271,7 @@ describe('legacy page follow-up fixes', () => {
           'el-avatar': passthroughStub('el-avatar'),
           'el-button': ButtonStub,
           'el-dialog': DialogStub,
+          'el-drawer': DrawerStub,
           'el-form': passthroughStub('el-form'),
           'el-form-item': passthroughStub('el-form-item'),
           'el-input': InputStub,
