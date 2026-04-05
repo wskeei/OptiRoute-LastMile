@@ -95,6 +95,10 @@ class Plan(PlanBase, BaseSchema):
     created_at: datetime
     routes: List[Route] = []
 
+
+class ResetDemoRequest(BaseModel):
+    randomize_station: bool = False
+
 # --- User Schemas ---
 class UserBase(BaseModel):
     username: str

@@ -122,11 +122,22 @@ def test_get_plan_routes(test_db, background_runner_spy):
     assert isinstance(data, list)
 
 def test_reset_demo_data(test_db):
-    response = client.post("/api/v1/dispatch/reset-demo")
+    response = client.post("/api/v1/dispatch/reset-demo", json={"randomize_station": False})
     assert response.status_code == 200
     data = response.json()
     assert "message" in data
     assert data["pending_packages"] == 10
+    assert "station" in data
+
+
+def test_reset_demo_data_can_randomize_main_station(test_db):
+    response = client.post("/api/v1/dispatch/reset-demo", json={"randomize_station": True})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "station" in data
+    assert "latitude" in data["station"]
+    assert "longitude" in data["station"]
 
 def test_create_plan_invalid_station(test_db):
     response = client.post("/api/v1/dispatch/plans", json={

@@ -5,7 +5,12 @@ from typing import List
 from app.db.session import get_db
 from app.schemas import all_schemas as schemas
 from app.models import all_models as models
+from app.services.demo_data_service import (
+    build_package_points_around_station,
+    choose_random_station_seed,
+)
 from app.services.dispatch_service import DispatchService, run_dispatch_background
+from app.services.station_service import StationService
 
 router = APIRouter()
 
@@ -98,13 +103,26 @@ def clear_dispatch_history(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/reset-demo")
-def reset_demo_data(db: Session = Depends(get_db)):
+def reset_demo_data(payload: schemas.ResetDemoRequest, db: Session = Depends(get_db)):
     """
     重置演示数据：
     - 随机抽取100-150个包裹设为PENDING状态
     - 随机抽取5-10个快递员设为AVAILABLE状态
     """
     import random
+
+    station_service = StationService(db)
+    station = station_service.get_or_create_main_station()
+    if payload.randomize_station:
+        station = station_service.update_main_station(**choose_random_station_seed())
+
+    station_payload = {
+        "id": station.id,
+        "name": station.name,
+        "address": station.address,
+        "latitude": station.latitude,
+        "longitude": station.longitude,
+    }
 
     # 1. 将所有包裹设为ASSIGNED状态
     db.query(models.Package).update({
@@ -119,29 +137,28 @@ def reset_demo_data(db: Session = Depends(get_db)):
     package_sample_size = random.randint(100, 150)
     selected_package_ids = random.sample(all_package_ids, min(package_sample_size, len(all_package_ids)))
 
-    from app.utils.seed_shanghai_data import get_shanghai_locations
-    # 获取300个随机地址
-    shanghai_locs = get_shanghai_locations()
-    # 从中随机抽取对应数量的地址赋予包裹
-    selected_locs = random.sample(shanghai_locs, len(selected_package_ids))
+    package_points = build_package_points_around_station(
+        station_payload,
+        count=len(selected_package_ids),
+    )
     
     # 更新状态、重量和位置信息
     for i, pkg in enumerate(db.query(models.Package).filter(models.Package.id.in_(selected_package_ids))):
         pkg.status = models.PackageStatus.PENDING
-        pkg.weight = round(random.uniform(0.5, 8.0), 1) # 0.5 - 8.0 kg
-        
-        # Assign random Shanghai location
-        loc = selected_locs[i]
-        pkg.latitude = loc["lat"]
-        pkg.longitude = loc["lng"]
-        pkg.recipient_address = loc["address"]
-        pkg.recipient_name = loc["recipient"]
+        pkg.weight = round(random.uniform(0.5, 8.0), 1)
+
+        package_point = package_points[i]
+        pkg.latitude = package_point["latitude"]
+        pkg.longitude = package_point["longitude"]
+        pkg.recipient_address = package_point["recipient_address"]
+        pkg.recipient_name = package_point["recipient_name"]
 
     db.commit()
 
     # 3. 将所有快递员设为OFF_DUTY状态
     db.query(models.Courier).update({
-        "status": models.CourierStatus.OFF_DUTY
+        "status": models.CourierStatus.OFF_DUTY,
+        "station_id": station.id,
     })
     db.commit()
 
@@ -218,6 +235,6 @@ def reset_demo_data(db: Session = Depends(get_db)):
         "pending_packages": pending_count,
         "total_packages": total_packages,
         "available_couriers": available_couriers,
-        "total_couriers": total_couriers
+        "total_couriers": total_couriers,
+        "station": station_payload,
     }
-

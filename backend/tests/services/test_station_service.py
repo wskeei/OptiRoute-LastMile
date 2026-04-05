@@ -3,6 +3,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.models.all_models import Base, DeliveryStation
+from app.services.station_service import DEFAULT_MAIN_STATION
 from app.services.station_service import StationService
 
 
@@ -20,9 +21,10 @@ def test_get_or_create_main_station_creates_default_when_missing():
     db = TestingSessionLocal()
     try:
         station = StationService(db).get_or_create_main_station()
-        assert station.name
-        assert station.latitude
-        assert station.longitude
+        assert station.name == DEFAULT_MAIN_STATION["name"]
+        assert station.address == DEFAULT_MAIN_STATION["address"]
+        assert station.latitude == DEFAULT_MAIN_STATION["latitude"]
+        assert station.longitude == DEFAULT_MAIN_STATION["longitude"]
     finally:
         db.close()
 
