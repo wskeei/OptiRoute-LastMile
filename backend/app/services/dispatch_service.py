@@ -26,7 +26,7 @@ class DispatchService:
 
     def create_optimization_plan(self, title: str, station_id: int) -> models.DeliveryPlan:
         """创建一个新的配送计划（初始状态）"""
-        plan = models.DeliveryPlan(
+        plan = models.DeliveryPlan( #实例化class
             title=title,
             station_id=station_id,
             status=models.PlanStatus.OPTIMIZING,
@@ -34,7 +34,7 @@ class DispatchService:
         )
         self.db.add(plan)
         self.db.commit()
-        self.db.refresh(plan)
+        self.db.refresh(plan) # 刷新
         return plan
 
     def run_dispatch_algorithm(self, plan_id: int):
@@ -46,6 +46,7 @@ class DispatchService:
         4. 保存结果
         """
         # 重新获取 plan (确保在当前 session)
+        # .first():第一条
         plan = self.db.query(models.DeliveryPlan).filter(models.DeliveryPlan.id == plan_id).first()
         if not plan:
             return
@@ -93,6 +94,7 @@ class DispatchService:
             depot_coord = (station.latitude, station.longitude)
             
             # 获取快递员容量
+            # 结果A if 判断条件 else 结果B
             courier_capacities = [c.max_capacity if c.max_capacity else 50.0 for c in couriers]
 
             kmeans = ConstrainedKMeans(k=k, max_distance_from_depot=50.0)

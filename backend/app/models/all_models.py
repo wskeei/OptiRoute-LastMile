@@ -87,7 +87,7 @@ class Package(Base):
     route = relationship("DeliveryRoute", back_populates="packages")
 
 class DeliveryPlan(Base):
-    __tablename__ = "delivery_plans"
+    __tablename__ = "delivery_plans" # 定义表的名字
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String)

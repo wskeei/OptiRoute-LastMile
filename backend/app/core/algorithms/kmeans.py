@@ -40,13 +40,13 @@ def initialize_centroids_around_depot(depot: Tuple[float, float], k: int, radius
         k: 聚类数量
         radius: 初始分散半径 (km)
     """
-    depot_lat, depot_lon = depot
+    depot_lat, depot_lon = depot # 快递站的经纬度
     
     # 简单的随机初始化：在配送站周围生成随机角度和距离的点
     # 近似计算：1度纬度约111km，1度经度约111*cos(lat)
     
-    centroids = []
-    for _ in range(k):
+    centroids = [] # 用来装填即将生成的K点坐标
+    for _ in range(k): # _:代表循环，但是不需要索引值
         angle = np.random.uniform(0, 2 * np.pi)
         r = np.random.uniform(0, radius)
         
@@ -65,11 +65,12 @@ def assign_points_to_clusters(points: np.ndarray, centroids: np.ndarray) -> np.n
     Returns:
         labels: 形状为 (N,) 的数组，表示每个点所属的聚类索引
     """
-    N = points.shape[0]
-    K = centroids.shape[0]
+    N = points.shape[0] # 包裹总数量
+    K = centroids.shape[0] # 中心点（快递员）总数
     
     # 扩展维度以进行广播计算
-    # points: (N, 1, 2)
+    # 对于形状不相同的两个数组，通过矩阵广播实现形状对齐
+    # points: (N, 1, 2) # 原本是N行2列，现在插入一个维度
     # centroids: (1, K, 2)
     points_exp = points[:, np.newaxis, :]
     centroids_exp = centroids[np.newaxis, :, :]
@@ -212,7 +213,8 @@ class ConstrainedKMeans:
         # 对每个点，按距离排序其偏好的 cluster
         
         # 1. 获取每个点对所有聚类的距离排序索引 (N, K)
-        sorted_indices = np.argsort(dists, axis=1)
+        # 每个个点到中心点距离从小到大排序
+        sorted_indices = np.argsort(dists, axis=1) 
         
         labels = np.full(n_points, -1, dtype=int)
         current_loads = np.zeros(k)
@@ -223,14 +225,17 @@ class ConstrainedKMeans:
         # 策略C：按在此聚类中的距离排序 (最近的优先得) -> 这会导致远点被踢皮球
         
         # 采用策略A (Regret-based)
+        # 初始化数组
         regrets = np.zeros(n_points)
         for i in range(n_points):
+            # 如果快递员数量大于1
             if k > 1:
                 regrets[i] = dists[i, sorted_indices[i, 1]] - dists[i, sorted_indices[i, 0]]
             else:
                 regrets[i] = 0
                 
         # 按遗憾值降序排列，优先处理 "如果不给它最优，它会损失很大" 的点
+        # 反转成从大到小的顺序
         priority_order = np.argsort(regrets)[::-1]
         
         for point_idx in priority_order:
