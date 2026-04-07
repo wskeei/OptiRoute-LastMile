@@ -68,6 +68,12 @@ const router = createRouter({
       name: 'Settings',
       component: () => import('../views/Settings.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/thesis/figure-4-5',
+      name: 'ThesisFigure45',
+      component: () => import('../views/ThesisFigure45.vue'),
+      meta: { requiresAuth: false, shell: false }
     }
   ]
 })

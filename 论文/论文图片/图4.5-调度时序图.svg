@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="1080" viewBox="0 0 1560 1080" role="img" aria-labelledby="title desc">
+  <title id="title">图4.5 调度时序图</title>
+  <desc id="desc">基于真实代码抽象后的调度时序图，包含创建计划、后台准备、路径求解、前端轮询和完成收尾五个阶段。</desc>
+
+  <defs>
+    <marker id="arrow-solid" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#5c778d"/>
+    </marker>
+    <marker id="arrow-open" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#7a8da0" stroke-width="1.4"/>
+    </marker>
+    <style>
+      .canvas { fill: #ffffff; stroke: none; }
+      .head { fill: #f3f6f8; stroke: #90a2b1; stroke-width: 1.5; }
+      .life { stroke: #a5b3be; stroke-width: 1.5; stroke-dasharray: 6 8; }
+      .activation { fill: rgba(76,120,168,0.12); stroke: rgba(76,120,168,0.35); stroke-width: 1; }
+      .msg { fill: none; stroke: #5c778d; stroke-width: 2; }
+      .msg-dashed { fill: none; stroke: #7a8da0; stroke-width: 2; stroke-dasharray: 8 7; }
+      .chip { fill: #f3f6f8; stroke: #8c9cab; stroke-width: 1; }
+      .fragment-loop { fill: rgba(255,255,255,0.42); stroke: #7a8da6; stroke-width: 1.5; }
+      .fragment-alt { fill: rgba(248,249,251,0.8); stroke: #7a8da6; stroke-width: 1.5; stroke-dasharray: 7 6; }
+      .label-bg { fill: rgba(255,255,255,0.97); stroke: none; }
+      .note { fill: rgba(255,248,241,0.96); stroke: #c96a28; stroke-width: 1.2; stroke-dasharray: 5 4; }
+      .legend { fill: rgba(255,255,255,0.95); stroke: #c9d1d9; stroke-width: 1.1; }
+      .title {
+        font-family: SimSun, Songti SC, STSong, serif;
+        font-size: 13px;
+        font-weight: 700;
+        fill: #233645;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      .chip-text {
+        font-family: SimSun, Songti SC, STSong, serif;
+        font-size: 12px;
+        font-weight: 700;
+        fill: #516577;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      .fragment-text {
+        font-family: 'Times New Roman', serif;
+        font-size: 12px;
+        fill: #4b657b;
+      }
+      .msg-text {
+        font-family: SimSun, Songti SC, STSong, serif;
+        font-size: 12px;
+        fill: #38546b;
+        text-anchor: middle;
+        dominant-baseline: middle;
+      }
+      .legend-title {
+        font-family: SimSun, Songti SC, STSong, serif;
+        font-size: 14px;
+        font-weight: 700;
+        fill: #35516a;
+      }
+      .legend-text {
+        font-family: SimSun, Songti SC, STSong, serif;
+        font-size: 11px;
+        fill: #486073;
+      }
+      .caption {
+        font-family: SimSun, Songti SC, STSong, serif;
+        font-size: 20px;
+        fill: #1e2f3c;
+        text-anchor: middle;
+      }
+    </style>
+  </defs>
+
+  <rect class="canvas" x="0" y="0" width="1560" height="1080"/>
+
+  <rect class="head" x="72" y="52" width="176" height="40" rx="12" ry="12"/>
+  <rect class="head" x="292" y="52" width="176" height="40" rx="12" ry="12"/>
+  <rect class="head" x="512" y="52" width="176" height="40" rx="12" ry="12"/>
+  <rect class="head" x="732" y="52" width="176" height="40" rx="12" ry="12"/>
+  <rect class="head" x="952" y="52" width="176" height="40" rx="12" ry="12"/>
+
+  <text class="title" x="160" y="72">调度页面 SmartDispatch</text>
+  <text class="title" x="380" y="72">Dispatch API</text>
+  <text class="title" x="600" y="72">后台调度任务</text>
+  <text class="title" x="820" y="72">路径优化模块</text>
+  <text class="title" x="1040" y="72">SQLite</text>
+
+  <line class="life" x1="160" y1="92" x2="160" y2="978"/>
+  <line class="life" x1="380" y1="92" x2="380" y2="978"/>
+  <line class="life" x1="600" y1="92" x2="600" y2="978"/>
+  <line class="life" x1="820" y1="92" x2="820" y2="978"/>
+  <line class="life" x1="1040" y1="92" x2="1040" y2="978"/>
+
+  <rect class="activation" x="372" y="146" width="16" height="840" rx="8" ry="8"/>
+  <rect class="activation" x="592" y="314" width="16" height="614" rx="8" ry="8"/>
+  <rect class="activation" x="1032" y="204" width="16" height="720" rx="8" ry="8"/>
+
+  <rect class="chip" x="28" y="132" width="92" height="36" rx="12" ry="12"/>
+  <rect class="chip" x="28" y="370" width="92" height="36" rx="12" ry="12"/>
+  <rect class="chip" x="28" y="496" width="92" height="36" rx="12" ry="12"/>
+  <rect class="chip" x="28" y="748" width="92" height="36" rx="12" ry="12"/>
+  <rect class="chip" x="28" y="902" width="92" height="36" rx="12" ry="12"/>
+
+  <text class="chip-text" x="74" y="150">创建计划</text>
+  <text class="chip-text" x="74" y="388">后台准备</text>
+  <text class="chip-text" x="74" y="514">路径求解</text>
+  <text class="chip-text" x="74" y="766">前端轮询</text>
+  <text class="chip-text" x="74" y="920">完成收尾</text>
+
+  <rect class="fragment-alt" x="508" y="366" width="602" height="126" rx="14" ry="14"/>
+  <rect x="520" y="352" width="74" height="20" fill="#f6f8fa"/>
+  <text class="fragment-text" x="528" y="366">alt 资源不足</text>
+
+  <rect class="fragment-loop" x="508" y="488" width="602" height="270" rx="14" ry="14"/>
+  <rect x="520" y="474" width="82" height="20" fill="#f6f8fa"/>
+  <text class="fragment-text" x="528" y="488">loop 优化迭代</text>
+
+  <rect class="fragment-loop" x="136" y="764" width="984" height="222" rx="14" ry="14"/>
+  <rect x="148" y="750" width="62" height="20" fill="#f6f8fa"/>
+  <text class="fragment-text" x="156" y="764">loop 轮询</text>
+
+  <line class="msg" x1="160" y1="160" x2="380" y2="160" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="380" y1="214" x2="1040" y2="214" marker-end="url(#arrow-solid)"/>
+  <line class="msg-dashed" x1="380" y1="268" x2="160" y2="268" marker-end="url(#arrow-open)"/>
+  <line class="msg" x1="380" y1="322" x2="600" y2="322" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="600" y1="404" x2="1040" y2="404" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="600" y1="466" x2="1040" y2="466" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="600" y1="540" x2="820" y2="540" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="600" y1="602" x2="1040" y2="602" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="600" y1="680" x2="820" y2="680" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="600" y1="742" x2="1040" y2="742" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="160" y1="790" x2="380" y2="790" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="380" y1="846" x2="1040" y2="846" marker-end="url(#arrow-solid)"/>
+  <line class="msg" x1="600" y1="902" x2="1040" y2="902" marker-end="url(#arrow-solid)"/>
+  <line class="msg-dashed" x1="380" y1="958" x2="160" y2="958" marker-end="url(#arrow-open)"/>
+
+  <rect class="label-bg" x="232" y="138" width="76" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="672" y="192" width="76" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="228" y="246" width="84" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="443" y="300" width="94" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="768" y="382" width="104" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="768" y="444" width="104" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="674" y="518" width="72" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="784" y="580" width="72" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="663" y="658" width="94" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="778" y="720" width="84" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="234" y="768" width="72" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="652" y="824" width="116" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="779" y="880" width="82" height="22" rx="10" ry="10"/>
+  <rect class="label-bg" x="210" y="936" width="116" height="22" rx="10" ry="10"/>
+
+  <text class="msg-text" x="270" y="149">发起调度</text>
+  <text class="msg-text" x="710" y="203">创建 plan</text>
+  <text class="msg-text" x="270" y="257">返回 plan_id</text>
+  <text class="msg-text" x="490" y="311">启动后台任务</text>
+  <text class="msg-text" x="820" y="393">读取待调度数据</text>
+  <text class="msg-text" x="820" y="455">资源不足则结束</text>
+  <text class="msg-text" x="710" y="529">执行聚类</text>
+  <text class="msg-text" x="820" y="591">预建路线</text>
+  <text class="msg-text" x="710" y="669">执行路径优化</text>
+  <text class="msg-text" x="820" y="731">写中间进度</text>
+  <text class="msg-text" x="270" y="779">轮询状态</text>
+  <text class="msg-text" x="710" y="835">查询 plan/routes</text>
+  <text class="msg-text" x="820" y="891">写最终结果</text>
+  <text class="msg-text" x="268" y="947">返回状态与路线</text>
+
+  <rect class="note" x="160" y="986" width="76" height="34" rx="10" ry="10"/>
+  <text class="msg-text" x="198" y="1004" fill="#8c4e24">停止轮询</text>
+
+  <rect class="legend" x="1230" y="132" width="290" height="248" rx="16" ry="16"/>
+  <rect class="legend" x="1230" y="396" width="290" height="146" rx="16" ry="16"/>
+
+  <text class="legend-title" x="1248" y="158">真实对应说明</text>
+  <text class="legend-text" x="1248" y="188">• 发起调度 = POST /dispatch/plans</text>
+  <text class="legend-text" x="1248" y="210">• 轮询状态 = GET /dispatch/plans/{id}</text>
+  <text class="legend-text" x="1248" y="232">• 写中间进度 = 更新 route.geo_json</text>
+  <text class="legend-text" x="1248" y="254">• 写最终结果 = 更新 route / package / plan</text>
+
+  <text class="legend-title" x="1248" y="422">状态</text>
+  <text class="legend-text" x="1248" y="452">• plan: OPTIMIZING -&gt; READY / COMPLETED</text>
+  <text class="legend-text" x="1248" y="474">• route: calculating -&gt; optimizing -&gt; optimized</text>
+
+</svg>
