@@ -165,7 +165,7 @@ const secondaryNavItems = SECONDARY_NAV_ITEMS.map((item) => ({
 }))
 
 const isAuthPage = computed(
-  () => route.path === '/login' || route.path === '/register' || route.meta.shell === false
+  () => route.path === '/login' || route.path === '/register' || route.meta?.shell === false
 )
 const isActiveRoute = (path: string) => route.path === path
 const showNavDescription = (path: string, description?: string) =>
