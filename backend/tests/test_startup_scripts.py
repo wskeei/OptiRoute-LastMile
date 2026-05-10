@@ -51,3 +51,24 @@ def test_common_script_contains_shared_helpers() -> None:
     assert "uv run python seed_shanghai_data.py" in content
     assert "uv sync" in content
     assert "npm install" in content
+
+
+def test_windows_batch_script_exists_and_covers_full_workflow() -> None:
+    script_path = SCRIPTS_DIR / "start.bat"
+
+    assert script_path.exists()
+
+    content = read_script("start.bat")
+    # Dependency checks
+    assert "python" in content.lower()
+    assert "node" in content.lower()
+    assert "uv" in content
+    # Dependency installation
+    assert "uv sync" in content
+    assert "npm install" in content
+    # Database setup
+    assert "alembic upgrade head" in content
+    assert "seed_shanghai_data.py" in content
+    # Service startup
+    assert "uvicorn" in content
+    assert "npm run dev" in content
