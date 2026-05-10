@@ -1,0 +1,7 @@
+# Ensure Windows batch scripts get CRLF line endings on checkout.
+# LF line endings break cmd.exe parsing of ^ escapes and & operators.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Keep shell scripts as LF everywhere.
+*.sh text eol=lf
